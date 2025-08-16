@@ -15,7 +15,7 @@ const state = {
   layout: 'auto',
   export: { width: 1024, height: 1024, unit: 'px', dpi: 300 },
   grid: { cols: 8, rows: 6 },
-  options: { rectCells: false, offsetClamp: true },
+  options: { rectCells: true },
   presetVisible: true,
 };
 
@@ -24,6 +24,31 @@ function setupThemeToggle() {
   btn?.addEventListener('click', () => {
     const html = document.documentElement;
     html.dataset.theme = html.dataset.theme === 'light' ? 'dark' : 'light';
+  });
+}
+
+// Preview canvas background toggle (white/black only; preview-only)
+function setupCanvasBgToggle() {
+  const container = document.getElementById('bgToggle');
+  const canvasEl = document.getElementById('preview');
+  if (!container || !canvasEl) return;
+
+  const apply = (mode) => {
+    const m = mode === 'black' ? 'black' : 'white';
+    canvasEl.classList.toggle('bg-white', m === 'white');
+    canvasEl.classList.toggle('bg-black', m === 'black');
+    try { localStorage.setItem('gpt5_preview_bg', m); } catch {}
+    const btns = container.querySelectorAll('button[data-bg]');
+    btns.forEach(b => b.classList.toggle('active', b.dataset.bg === m));
+  };
+
+  const saved = (typeof localStorage !== 'undefined' && localStorage.getItem('gpt5_preview_bg')) || 'white';
+  apply(saved);
+
+  container.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-bg]');
+    if (!btn) return;
+    apply(btn.dataset.bg);
   });
 }
 
@@ -75,7 +100,7 @@ function setupInputs() {
   qsa('.scale-slider').forEach((sld) => {
     sld.addEventListener('input', (e) => {
       const idx = clampInt(e.target.getAttribute('data-index'), 0, 3, 0);
-      const v = clampInt(e.target.value, 1, 100, 100);
+      const v = clampInt(e.target.value, 1, 100, 80);
       if (!state.images[idx]) state.images[idx] = { id: idx, scale: v };
       state.images[idx].scale = v;
       const num = qs(`.scale-num[data-index="${idx}"]`);
@@ -86,7 +111,7 @@ function setupInputs() {
   qsa('.scale-num').forEach((num) => {
     num.addEventListener('input', (e) => {
       const idx = clampInt(e.target.getAttribute('data-index'), 0, 3, 0);
-      const v = clampInt(e.target.value, 1, 100, 100);
+      const v = clampInt(e.target.value, 1, 100, 80);
       if (!state.images[idx]) state.images[idx] = { id: idx, scale: v };
       state.images[idx].scale = v;
       const sld = qs(`.scale-slider[data-index="${idx}"]`);
@@ -114,7 +139,6 @@ function setupInputs() {
   el('gridCols').addEventListener('input', (e) => { const v = clampInt(e.target.value, 1, 50, 8); state.grid.cols = v; render(); });
   el('gridRows').addEventListener('input', (e) => { const v = clampInt(e.target.value, 1, 50, 6); state.grid.rows = v; render(); });
   el('rectCells').addEventListener('change', (e) => { state.options.rectCells = !!e.target.checked; render(); });
-  el('offsetClamp').addEventListener('change', (e) => { state.options.offsetClamp = !!e.target.checked; render(); });
 
   // View / Export
   const fit = el('fitBtn');
@@ -138,7 +162,7 @@ async function loadImageAtIndex(file, idx) {
     return null;
   });
   if (!asset) return;
-  state.images[idx] = { id: idx, scale: state.images[idx]?.scale ?? 100, ...asset };
+  state.images[idx] = { id: idx, scale: state.images[idx]?.scale ?? 80, ...asset };
   updateSlots();
 }
 

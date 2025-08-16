@@ -26,32 +26,32 @@
               <div class="slot" data-index="0"><span class="hint">A</span><img hidden /></div>
               <div class="ctrls">
                 <label>スケール</label>
-                <input class="slider scale-slider" data-index="0" type="range" min="1" max="100" value="100" />
-                <input class="num scale-num" data-index="0" type="number" min="1" max="100" value="100" />
+                <input class="slider scale-slider" data-index="0" type="range" min="1" max="100" value="80" />
+                <input class="num scale-num" data-index="0" type="number" min="1" max="100" value="80" />
               </div>
             </div>
             <div class="input-row" data-index="1">
               <div class="slot" data-index="1"><span class="hint">B</span><img hidden /></div>
               <div class="ctrls">
                 <label>スケール</label>
-                <input class="slider scale-slider" data-index="1" type="range" min="1" max="100" value="100" />
-                <input class="num scale-num" data-index="1" type="number" min="1" max="100" value="100" />
+                <input class="slider scale-slider" data-index="1" type="range" min="1" max="100" value="80" />
+                <input class="num scale-num" data-index="1" type="number" min="1" max="100" value="80" />
               </div>
             </div>
             <div class="input-row" data-index="2">
               <div class="slot" data-index="2"><span class="hint">C</span><img hidden /></div>
               <div class="ctrls">
                 <label>スケール</label>
-                <input class="slider scale-slider" data-index="2" type="range" min="1" max="100" value="100" />
-                <input class="num scale-num" data-index="2" type="number" min="1" max="100" value="100" />
+                <input class="slider scale-slider" data-index="2" type="range" min="1" max="100" value="80" />
+                <input class="num scale-num" data-index="2" type="number" min="1" max="100" value="80" />
               </div>
             </div>
             <div class="input-row" data-index="3">
               <div class="slot" data-index="3"><span class="hint">D</span><img hidden /></div>
               <div class="ctrls">
                 <label>スケール</label>
-                <input class="slider scale-slider" data-index="3" type="range" min="1" max="100" value="100" />
-                <input class="num scale-num" data-index="3" type="number" min="1" max="100" value="100" />
+                <input class="slider scale-slider" data-index="3" type="range" min="1" max="100" value="80" />
+                <input class="num scale-num" data-index="3" type="number" min="1" max="100" value="80" />
               </div>
             </div>
           </div>
@@ -87,12 +87,8 @@
 
           <div class="grid-2" style="margin-top:8px">
             <label class="row" style="gap:8px;">
-              <input id="rectCells" type="checkbox" />
+              <input id="rectCells" type="checkbox" checked />
               <span>セルを長方形で隙間なく敷き詰め</span>
-            </label>
-            <label class="row" style="gap:8px;">
-              <input id="offsetClamp" type="checkbox" checked />
-              <span>オフセット時に端を内側に収める</span>
             </label>
           </div>
         </div>
@@ -113,7 +109,6 @@
               <select id="unit">
                 <option value="px">px</option>
                 <option value="mm">mm</option>
-                <option value="in">インチ</option>
               </select>
             </div>
           </div>
@@ -163,6 +158,10 @@
             <div class="subtle">調整内容を反映して表示します</div>
           </div>
           <div class="row">
+            <div id="bgToggle" class="bg-toggle" aria-label="キャンバス背景色切替">
+              <button type="button" class="btn btn-ghost" data-bg="white">白背景</button>
+              <button type="button" class="btn btn-ghost" data-bg="black">黒背景</button>
+            </div>
             <button id="togglePresetBtn" class="btn">プリセットを隠す</button>
           </div>
         </div>
@@ -176,5 +175,11 @@
     </div>
 
     <script src="./scripts/app.js" defer></script>
+    <script defer>
+      // 初期化: プレビュー領域の背景色トグル
+      document.addEventListener('DOMContentLoaded', function () {
+        try { if (typeof setupCanvasBgToggle === 'function') setupCanvasBgToggle(); } catch (e) { }
+      });
+    </script>
   </body>
   </html>
