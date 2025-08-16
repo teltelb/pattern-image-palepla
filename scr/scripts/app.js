@@ -351,7 +351,7 @@ function drawPattern(canvas, ctx, cfg, images) {
       // asset selection
       // Special handling for 4 images:
       //  - Odd-numbered rows (1-based) -> ABABAB...
-      //  - Even-numbered rows (1-based) -> DCDCDC...
+      //  - Even-numbered rows (1-based) -> CDCDCD...
       // Note: We draw only when (row+col) is even, so across a row the drawn
       // cells are every 2 columns. Use (col>>1)&1 to alternate within drawn cells.
       const count = list.length;
@@ -362,8 +362,8 @@ function drawPattern(canvas, ctx, cfg, images) {
           // row 0,2,4,... (1-based odd rows): ABAB
           asset = list[alt === 0 ? 0 : 1];
         } else {
-          // row 1,3,5,... (1-based even rows): DCDC
-          asset = list[alt === 0 ? 3 : 2];
+          // row 1,3,5,... (1-based even rows): CDCD
+          asset = list[alt === 0 ? 2 : 3];
         }
       } else {
         // Default: diagonal progression with gaps
