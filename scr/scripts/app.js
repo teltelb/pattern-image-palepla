@@ -13,6 +13,7 @@ const state = {
   randomSeed: Math.floor(Math.random() * 1e9),
   rotationEnabled: true,
   layout: 'auto',
+  custom: { enabled: false, repeat: { cols: 2, rows: 2 }, map: [0,1,3,2] },
   export: { width: 1024, height: 1024, unit: 'px', dpi: 300 },
   grid: { cols: 8, rows: 6 },
   options: { rectCells: true },
@@ -172,6 +173,22 @@ function setupInputs() {
     applyPresetVisibility();
     try { localStorage.setItem('gpt5_preset_visible', String(state.presetVisible)); } catch {}
   });
+
+  // Custom layout controls
+  try {
+    const openLayout = el('openLayoutEditorBtn');
+    if (openLayout) openLayout.addEventListener('click', () => {
+      const w = window.open('layout.html', 'gpt5_layout_editor', 'width=900,height=700');
+      if (w) {
+        try { w.__gpt5_initialLayout = JSON.parse(JSON.stringify(state.custom || {})); } catch { w.__gpt5_initialLayout = state.custom; }
+      }
+    });
+    const useCustom = el('useCustomLayout');
+    if (useCustom) {
+      useCustom.checked = !!state.custom?.enabled;
+      useCustom.addEventListener('change', (e) => { state.custom.enabled = !!e.target.checked; render(); });
+    }
+  } catch {}
 }
 
 // --- Preset grid (cols/rows) persistence ---
@@ -294,6 +311,33 @@ function drawPattern(canvas, ctx, cfg, images) {
   // Do NOT fill background; keep canvas transparent for export/preview
 
   const list = images.filter(Boolean);
+  
+  // Custom layout mode: draw according to user map (no skip parity)
+  const useCustom = !!state.custom?.enabled && Array.isArray(state.custom?.map) && state.custom.map.length > 0;
+  const repCols = clampInt(state.custom?.repeat?.cols, 1, 100, 2);
+  const repRows = clampInt(state.custom?.repeat?.rows, 1, 100, 2);
+  if (useCustom) {
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const x = startX + col * w;
+        const y = startY + row * h;
+        const mi = (row % repRows) * repCols + (col % repCols);
+        const which = state.custom.map[mi];
+        if (which == null || which === -1) continue;
+        const asset = list[which] || list[0];
+        if (!asset) continue;
+        const scalePct = asset.scale ?? 100;
+        const angle = state.rotationEnabled ? randomAngle(row, col, state.randomSeed) : 0;
+        ctx.save();
+        ctx.translate(x + w/2, y + h/2);
+        if (angle) ctx.rotate(angle);
+        drawAssetCover(ctx, asset, -w/2, -h/2, w, h, scalePct / 100);
+        ctx.restore();
+      }
+    }
+    ctx.restore();
+    return;
+  }
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       // offset pattern: shift odd rows by half cell
@@ -304,10 +348,28 @@ function drawPattern(canvas, ctx, cfg, images) {
       // 1つアキ配置: (row+col)偶数セルのみ描画
       if (((row + col) & 1) === 1) continue;
 
-      // choose asset diagonally with gap: floor((row+col)/2)
+      // asset selection
+      // Special handling for 4 images:
+      //  - Odd-numbered rows (1-based) -> ABABAB...
+      //  - Even-numbered rows (1-based) -> DCDCDC...
+      // Note: We draw only when (row+col) is even, so across a row the drawn
+      // cells are every 2 columns. Use (col>>1)&1 to alternate within drawn cells.
       const count = list.length;
-      const diagIdx = Math.floor((row + col) / 2);
-      const asset = count <= 1 ? list[0] : list[diagIdx % count];
+      let asset;
+      if (count === 4) {
+        const alt = ((col >> 1) & 1); // 0,1,0,1 across drawn cells in a row
+        if ((row % 2) === 0) {
+          // row 0,2,4,... (1-based odd rows): ABAB
+          asset = list[alt === 0 ? 0 : 1];
+        } else {
+          // row 1,3,5,... (1-based even rows): DCDC
+          asset = list[alt === 0 ? 3 : 2];
+        }
+      } else {
+        // Default: diagonal progression with gaps
+        const diagIdx = Math.floor((row + col) / 2);
+        asset = count <= 1 ? list[0] : list[diagIdx % count];
+      }
       if (!asset) continue;
 
       const scalePct = asset.scale ?? 100;
@@ -367,6 +429,13 @@ function applyPreset(key) {
           const gc = el('gridCols'), gr = el('gridRows');
           if (gc) gc.value = String(p.cols);
           if (gr) gr.value = String(p.rows);
+          // apply custom layout if saved
+          if (p.layout && typeof p.layout === 'object') {
+            state.custom.enabled = !!p.layout.enabled;
+            state.custom.repeat = { cols: clampInt(p.layout?.repeat?.cols, 1, 100, 2), rows: clampInt(p.layout?.repeat?.rows, 1, 100, 2) };
+            state.custom.map = Array.isArray(p.layout.map) ? p.layout.map.slice() : [];
+            const useCustom = el('useCustomLayout'); if (useCustom) useCustom.checked = state.custom.enabled;
+          }
         }
       }
       break;
@@ -433,9 +502,9 @@ function onSavePreset() {
   const rows = toInt(el('gridRows').value, 1);
   const existing = state.customPresets.find(p => p.name === name);
   if (existing) {
-    Object.assign(existing, { unit, width, height, dpi, cols, rows });
+    Object.assign(existing, { unit, width, height, dpi, cols, rows, layout: { enabled: !!state.custom?.enabled, repeat: { cols: state.custom?.repeat?.cols || 2, rows: state.custom?.repeat?.rows || 2 }, map: Array.isArray(state.custom?.map) ? state.custom.map : [] } });
   } else {
-    state.customPresets.push({ id: uid(), name, unit, width, height, dpi, cols, rows });
+    state.customPresets.push({ id: uid(), name, unit, width, height, dpi, cols, rows, layout: { enabled: !!state.custom?.enabled, repeat: { cols: state.custom?.repeat?.cols || 2, rows: state.custom?.repeat?.rows || 2 }, map: Array.isArray(state.custom?.map) ? state.custom.map : [] } });
   }
   saveCustomPresets(state.customPresets);
   refreshPresetSelect();
@@ -704,6 +773,23 @@ if (window.__GPT5_INIT__) {
 
   setupThemeToggle();
   setupInputs();
+  // Listen for messages from layout editor
+  window.addEventListener('message', (e) => {
+    const msg = e?.data;
+    if (!msg || msg.type !== 'customLayoutSaved') return;
+    try {
+      const payload = msg.payload || {};
+      const rep = payload.repeat || {};
+      const map = Array.isArray(payload.map) ? payload.map : [];
+      state.custom.enabled = true;
+      state.custom.repeat = { cols: clampInt(rep.cols, 1, 100, 2), rows: clampInt(rep.rows, 1, 100, 2) };
+      state.custom.map = map.slice();
+      const useCustom = el('useCustomLayout'); if (useCustom) useCustom.checked = true;
+      render();
+    } catch (err) {
+      console.error('Failed to apply custom layout', err);
+    }
+  });
   // Restore preset toolbar visibility
   try { const pv = localStorage.getItem('gpt5_preset_visible'); if (pv !== null) state.presetVisible = pv === 'true'; } catch {}
   updatePreviewSize(true);

@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="ja" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>レイアウト編集</title>
+    <link rel="stylesheet" href="styles/pattern-theme.css" />
+    <style>
+      body { padding: 12px; }
+      .grid { display: grid; gap: 6px; margin-top: 12px; }
+      .cell { border: 1px solid rgba(148,163,184,.45); height: 48px; display:flex; align-items:center; justify-content:center; cursor:pointer; user-select:none; }
+      .toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+      .legend { display:flex; gap:6px; align-items:center; }
+      .swatch { width: 18px; height: 18px; border-radius: 3px; border:1px solid #64748b; display:inline-block; }
+      .right { margin-left:auto; display:flex; gap:8px; align-items:center; }
+      .palette { display:flex; gap:6px; align-items:center; }
+      .palette .btn.active { box-shadow: var(--shadow-2), 0 0 0 2px var(--accent) inset; }
+      .spacer { flex: 1 1 auto; }
+    </style>
+  </head>
+  <body>
+    <h2 style="margin-top:0">カスタム配置エディタ</h2>
+    <div class="toolbar">
+      <div class="field">
+        <label for="repCols">繰り返し（横）</label>
+        <input id="repCols" type="number" min="1" max="20" value="2" />
+      </div>
+      <div class="field">
+        <label for="repRows">繰り返し（縦）</label>
+        <input id="repRows" type="number" min="1" max="20" value="2" />
+      </div>
+      <div class="palette right" aria-label="選択ツール">
+        <span>選択:</span>
+        <button type="button" class="btn btn-ghost" data-tool="-1">空</button>
+        <button type="button" class="btn btn-ghost" data-tool="0">A</button>
+        <button type="button" class="btn btn-ghost" data-tool="1">B</button>
+        <button type="button" class="btn btn-ghost" data-tool="2">C</button>
+        <button type="button" class="btn btn-ghost" data-tool="3">D</button>
+      </div>
+    </div>
+
+    <div class="toolbar" style="margin-top:8px">
+      <div class="legend">
+        <span>セルをクリックすると、右の選択ツールで選んだ要素を配置します。</span>
+      </div>
+      <div class="spacer"></div>
+      <button id="tplDefault" class="btn">テンプレート: AB / DC</button>
+      <button id="clearMap" class="btn">すべて空に</button>
+      <div class="spacer"></div>
+      <label style="display:flex; align-items:center; gap:8px;">
+        パターン名
+        <input id="patternName" type="text" placeholder="例: AB-DC-2x2" style="width:220px" />
+      </label>
+      <select id="patternSelect" style="min-width:200px"></select>
+      <button id="savePattern" class="btn">パターン保存</button>
+      <button id="loadPattern" class="btn">読込</button>
+      <button id="deletePattern" class="btn">削除</button>
+      <button id="saveMap" class="btn btn-primary">この配置を反映して閉じる</button>
+    </div>
+
+    <div id="grid" class="grid"></div>
+
+    <script>
+      const A=0,B=1,C=2,D=3;
+      const PATTERN_KEY = 'gpt5_layout_patterns_v1';
+      const state = { repeat: { cols: 2, rows: 2 }, map: [A,B, D,C], selected: A, patterns: [] };
+      function clamp(n,min,max){ n=Number(n)|0; return Math.min(max, Math.max(min, n)); }
+      function idx(r,c){ return r*state.repeat.cols + c; }
+      function readPatterns(){ try{ const s = localStorage.getItem(PATTERN_KEY); return s? JSON.parse(s): []; }catch{return []} }
+      function writePatterns(arr){ try{ localStorage.setItem(PATTERN_KEY, JSON.stringify(arr)); }catch{} }
+      function refreshPatternSelect(){
+        const sel = document.getElementById('patternSelect');
+        sel.innerHTML = '';
+        const optDef = document.createElement('option'); optDef.value=''; optDef.textContent='保存済みパターンを選択'; sel.appendChild(optDef);
+        state.patterns.forEach(p=>{ const o=document.createElement('option'); o.value=p.id; o.textContent=`${p.name} (${p.repeat.cols}x${p.repeat.rows})`; sel.appendChild(o); });
+      }
+      function buildGrid(){
+        const root = document.getElementById('grid');
+        root.style.gridTemplateColumns = `repeat(${state.repeat.cols}, 48px)`;
+        root.innerHTML = '';
+        for(let r=0;r<state.repeat.rows;r++){
+          for(let c=0;c<state.repeat.cols;c++){
+            const i = idx(r,c);
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'cell btn btn-ghost';
+            btn.dataset.index = String(i);
+            setCellLabel(btn, state.map[i]);
+            btn.addEventListener('click', () => { state.map[i] = state.selected === -1 ? null : state.selected; setCellLabel(btn, state.map[i]); });
+            root.appendChild(btn);
+          }
+        }
+      }
+      function setCellLabel(el, v){ el.textContent = v==null? '—' : (v===0?'A':v===1?'B':v===2?'C':'D'); }
+      function syncInputs(){
+        document.getElementById('repCols').value = String(state.repeat.cols);
+        document.getElementById('repRows').value = String(state.repeat.rows);
+      }
+      function applyFromOpener(){
+        try {
+          const init = window.__gpt5_initialLayout;
+          if (init && typeof init === 'object') {
+            const rc = init.repeat||{}; const m = Array.isArray(init.map)?init.map:null;
+            state.repeat.cols = clamp(rc.cols||2, 1, 100);
+            state.repeat.rows = clamp(rc.rows||2, 1, 100);
+            const size = state.repeat.cols * state.repeat.rows;
+            state.map = new Array(size).fill(null);
+            if (m && m.length) {
+              for(let i=0;i<size;i++){ state.map[i] = (m[i]===0||m[i]===1||m[i]===2||m[i]===3)? m[i] : null; }
+            }
+            if (!m || !m.length) { state.map = [0,1,3,2]; }
+          }
+        } catch {}
+      }
+      function setSelectedTool(val){ state.selected = val; document.querySelectorAll('.palette [data-tool]')?.forEach(b=> b.classList.toggle('active', String(val)===b.dataset.tool)); }
+      document.addEventListener('click', (e)=>{
+        const btn = e.target.closest('.palette [data-tool]'); if(!btn) return;
+        const v = parseInt(btn.dataset.tool,10); setSelectedTool(v);
+      });
+      document.getElementById('repCols').addEventListener('input', (e)=>{
+        const v = clamp(e.target.value,1,100);
+        state.repeat.cols = v; const size = v*state.repeat.rows; state.map.length = size; state.map.fill(null, state.map.length);
+        buildGrid();
+      });
+      document.getElementById('repRows').addEventListener('input', (e)=>{
+        const v = clamp(e.target.value,1,100);
+        state.repeat.rows = v; const size = v*state.repeat.cols; state.map.length = size; state.map.fill(null, state.map.length);
+        buildGrid();
+      });
+      document.getElementById('tplDefault').addEventListener('click', ()=>{
+        state.repeat = { cols: 2, rows: 2 }; state.map = [0,1,3,2]; syncInputs(); buildGrid();
+      });
+      document.getElementById('clearMap').addEventListener('click', ()=>{
+        state.map = new Array(state.repeat.cols*state.repeat.rows).fill(null); buildGrid();
+      });
+      document.getElementById('savePattern').addEventListener('click', ()=>{
+        const name = (document.getElementById('patternName').value||'').trim(); if(!name){ alert('パターン名を入力してください'); return; }
+        const idSel = document.getElementById('patternSelect').value;
+        const payload = { id: idSel || Math.random().toString(36).slice(2,10), name, repeat: { ...state.repeat }, map: state.map.slice() };
+        const idx = state.patterns.findIndex(x=>x.id===payload.id || x.name===name);
+        if(idx>=0) state.patterns[idx]=payload; else state.patterns.push(payload);
+        writePatterns(state.patterns); refreshPatternSelect();
+        document.getElementById('patternSelect').value = payload.id;
+      });
+      document.getElementById('loadPattern').addEventListener('click', ()=>{
+        const id = document.getElementById('patternSelect').value; if(!id) return;
+        const p = state.patterns.find(x=>x.id===id); if(!p) return;
+        state.repeat = { cols: clamp(p.repeat.cols,1,100), rows: clamp(p.repeat.rows,1,100) };
+        state.map = Array.isArray(p.map)? p.map.slice(): [];
+        syncInputs(); buildGrid();
+        document.getElementById('patternName').value = p.name;
+      });
+      document.getElementById('deletePattern').addEventListener('click', ()=>{
+        const id = document.getElementById('patternSelect').value; if(!id) return;
+        state.patterns = state.patterns.filter(x=>x.id!==id); writePatterns(state.patterns); refreshPatternSelect();
+        document.getElementById('patternName').value='';
+      });
+      document.getElementById('saveMap').addEventListener('click', ()=>{
+        try { window.opener.postMessage({ type:'customLayoutSaved', payload: { repeat: state.repeat, map: state.map } }, '*'); } catch {}
+        window.close();
+      });
+
+      applyFromOpener();
+      syncInputs();
+      state.patterns = readPatterns();
+      refreshPatternSelect();
+      buildGrid();
+      setSelectedTool(state.selected);
+    </script>
+  </body>
+  </html>
