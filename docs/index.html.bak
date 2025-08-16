@@ -21,9 +21,22 @@
       <aside class="sidebar">
         <div class="section">
           <h2>画像入力（最大4枚）</h2>
+          <div class="grid-2" style="margin-bottom:8px">
+            <div class="field">
+              <label for="globalScaleSlider">一括スケール</label>
+              <input id="globalScaleSlider" class="slider" type="range" min="1" max="100" value="80" />
+            </div>
+            <div class="field">
+              <label for="globalScaleNum">一括スケール値</label>
+              <input id="globalScaleNum" class="num" type="number" min="1" max="100" value="80" />
+            </div>
+          </div>
           <div id="inputList" class="input-list" aria-label="画像をドラッグ＆ドロップまたは選択">
             <div class="input-row" data-index="0">
-              <div class="slot" data-index="0"><span class="hint">A</span><img hidden /></div>
+              <div class="slot" data-index="0">
+                <button type="button" class="slot-del btn btn-ghost" data-index="0" title="削除" style="position:absolute;top:6px;right:6px;z-index:2;">×</button>
+                <span class="hint">A</span><img hidden />
+              </div>
               <div class="ctrls">
                 <label>スケール</label>
                 <input class="slider scale-slider" data-index="0" type="range" min="1" max="100" value="80" />
@@ -31,7 +44,10 @@
               </div>
             </div>
             <div class="input-row" data-index="1">
-              <div class="slot" data-index="1"><span class="hint">B</span><img hidden /></div>
+              <div class="slot" data-index="1">
+                <button type="button" class="slot-del btn btn-ghost" data-index="1" title="削除" style="position:absolute;top:6px;right:6px;z-index:2;">×</button>
+                <span class="hint">B</span><img hidden />
+              </div>
               <div class="ctrls">
                 <label>スケール</label>
                 <input class="slider scale-slider" data-index="1" type="range" min="1" max="100" value="80" />
@@ -39,7 +55,10 @@
               </div>
             </div>
             <div class="input-row" data-index="2">
-              <div class="slot" data-index="2"><span class="hint">C</span><img hidden /></div>
+              <div class="slot" data-index="2">
+                <button type="button" class="slot-del btn btn-ghost" data-index="2" title="削除" style="position:absolute;top:6px;right:6px;z-index:2;">×</button>
+                <span class="hint">C</span><img hidden />
+              </div>
               <div class="ctrls">
                 <label>スケール</label>
                 <input class="slider scale-slider" data-index="2" type="range" min="1" max="100" value="80" />
@@ -47,7 +66,10 @@
               </div>
             </div>
             <div class="input-row" data-index="3">
-              <div class="slot" data-index="3"><span class="hint">D</span><img hidden /></div>
+              <div class="slot" data-index="3">
+                <button type="button" class="slot-del btn btn-ghost" data-index="3" title="削除" style="position:absolute;top:6px;right:6px;z-index:2;">×</button>
+                <span class="hint">D</span><img hidden />
+              </div>
               <div class="ctrls">
                 <label>スケール</label>
                 <input class="slider scale-slider" data-index="3" type="range" min="1" max="100" value="80" />
@@ -88,12 +110,12 @@
 
           <div class="grid-2" style="margin-top:8px">
             <div class="field">
-              <label for="gridCols">横の数</label>
-              <input id="gridCols" type="number" min="1" max="50" value="8" />
+              <label for="gridRows">縦の数</label>
+              <input id="gridRows" type="number" min="1" max="50" value="5" />
             </div>
             <div class="field">
-              <label for="gridRows">縦の数</label>
-              <input id="gridRows" type="number" min="1" max="50" value="6" />
+              <label for="gridCols">横の数</label>
+              <input id="gridCols" type="number" min="1" max="50" value="5" />
             </div>
           </div>
 
@@ -110,11 +132,11 @@
           <div class="grid-3">
             <div class="field">
               <label for="width">幅</label>
-              <input id="width" type="number" placeholder="px/mm/in" value="1024" />
+              <input id="width" type="number" placeholder="px/mm/in" value="1000" />
             </div>
             <div class="field">
               <label for="height">高さ</label>
-              <input id="height" type="number" placeholder="px/mm/in" value="1024" />
+              <input id="height" type="number" placeholder="px/mm/in" value="1000" />
             </div>
             <div class="field">
               <label for="unit">単位</label>
@@ -144,9 +166,6 @@
               <label for="preset">プリセット</label>
               <select id="preset">
                 <option value="">選択</option>
-                <option value="a4-300">A4 300dpi</option>
-                <option value="square-1024">正方形 1024px</option>
-                <option value="square-2048">正方形 2048px</option>
               </select>
             </div>
             <div class="field">
@@ -187,11 +206,9 @@
 
     <script src="./scripts/app.js" defer></script>
     <script defer>
-      // 初期値: プレビュー領域の背景色トグル
       document.addEventListener('DOMContentLoaded', function () {
         try { if (typeof setupCanvasBgToggle === 'function') setupCanvasBgToggle(); } catch (e) { }
       });
     </script>
   </body>
   </html>
-
