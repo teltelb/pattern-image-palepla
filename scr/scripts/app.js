@@ -1,4 +1,5 @@
 // GPT5 Pattern Tool - Clean UTF-8 rebuild
+const APP_VERSION = '2025-08-16-1';
 
 const el = (id) => document.getElementById(id);
 const qs = (s, r = document) => r.querySelector(s);
@@ -150,6 +151,9 @@ function setupInputs() {
   el('preset')?.addEventListener('change', (e) => { applyPreset(e.target.value); updatePreviewSize(); render(); updateDeletePresetState(); });
   el('savePresetBtn')?.addEventListener('click', onSavePreset);
   el('deletePresetBtn')?.addEventListener('click', onDeletePreset);
+  el('exportPresetsBtn')?.addEventListener('click', onExportPresets);
+  el('importPresetsBtn')?.addEventListener('click', () => el('importPresetsFile')?.click());
+  el('importPresetsFile')?.addEventListener('change', onImportPresetsFile);
 
   // Preset toolbar toggle
   el('togglePresetBtn')?.addEventListener('click', () => {
@@ -383,6 +387,76 @@ function onDeletePreset() {
   state.customPresets = state.customPresets.filter(p => p.id !== id); saveCustomPresets(state.customPresets); refreshPresetSelect(); sel.value = ''; updateDeletePresetState();
 }
 
+function onExportPresets() {
+  try {
+    const data = JSON.stringify(state.customPresets || [], null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const ts = new Date().toISOString().replace(/[:.]/g,'-');
+    const url = URL.createObjectURL(blob);
+    triggerDownload(url, `gpt5_presets_${ts}.json`);
+    setTimeout(()=>{ try { URL.revokeObjectURL(url); } catch {} }, 1000);
+  } catch (e) {
+    alert('プリセットのエクスポートに失敗しました');
+    console.error(e);
+  }
+}
+
+function onImportPresetsFile(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const text = String(reader.result || '');
+      const arr = JSON.parse(text);
+      if (!Array.isArray(arr)) throw new Error('invalid format');
+      let added = 0, updated = 0;
+      const existingByName = new Map((state.customPresets||[]).map(p => [p.name, p]));
+      arr.forEach(raw => {
+        const p = sanitizeImportedPreset(raw);
+        if (!p) return;
+        const ex = existingByName.get(p.name);
+        if (ex) {
+          // keep existing id but replace fields
+          Object.assign(ex, { unit: p.unit, width: p.width, height: p.height, dpi: p.dpi, cols: p.cols, rows: p.rows, scales: p.scales, layout: p.layout });
+          updated++;
+        } else {
+          if (!p.id) p.id = uid();
+          state.customPresets.push(p);
+          existingByName.set(p.name, p);
+          added++;
+        }
+      });
+      saveCustomPresets(state.customPresets);
+      refreshPresetSelect();
+      alert(`インポート完了: 追加 ${added} 件 / 更新 ${updated} 件`);
+      e.target.value = '';
+    } catch (err) {
+      alert('プリセットのインポートに失敗しました。JSON形式をご確認ください');
+      console.error(err);
+      e.target.value = '';
+    }
+  };
+  reader.onerror = () => { alert('ファイルの読み込みに失敗しました'); e.target.value = ''; };
+  reader.readAsText(file);
+}
+
+function sanitizeImportedPreset(x) {
+  try {
+    const unit = (x.unit === 'px' || x.unit === 'mm' || x.unit === 'in') ? x.unit : 'px';
+    const width = toInt(x.width, 1000); const height = toInt(x.height, 1000); const dpi = toInt(x.dpi, 300);
+    const cols = toInt(x.cols, 5); const rows = toInt(x.rows, 5);
+    const name = (x.name || '').toString().trim(); if (!name) return null;
+    const scales = Array.isArray(x.scales) ? x.scales.slice(0, MAX_IMAGES).map(v => clampInt(v, 1, 100, 80)) : [80,80,80,80];
+    const layout = x.layout && typeof x.layout === 'object' ? {
+      enabled: !!x.layout.enabled,
+      repeat: { cols: clampInt(x.layout?.repeat?.cols, 1, 100, 2), rows: clampInt(x.layout?.repeat?.rows, 1, 100, 2) },
+      map: Array.isArray(x.layout.map) ? x.layout.map.slice() : []
+    } : { enabled: false, repeat: { cols: 2, rows: 2 }, map: [] };
+    return { id: x.id || '', name, unit, width, height, dpi, cols, rows, scales, layout };
+  } catch { return null; }
+}
+
 function applyPreset(key) {
   const w = el('width'), h = el('height'), unit = el('unit'), dpi = el('dpi');
   if (key && key.startsWith('c:')) {
@@ -478,6 +552,7 @@ function applyPresetVisibility() {
 // init
 if (!window.__GPT5_INIT__) {
   window.__GPT5_INIT__ = true;
+  try { console.info('[GPT5PatternTool] version', APP_VERSION); } catch {}
   state.customPresets = loadCustomPresets(); refreshPresetSelect();
   setupThemeToggle(); setupInputs();
   window.addEventListener('message', (e) => {

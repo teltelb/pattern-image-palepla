@@ -177,10 +177,13 @@
               <div class="row">
                 <button id="savePresetBtn" class="btn">名前を付けて保存</button>
                 <button id="deletePresetBtn" class="btn" disabled>カスタム削除</button>
+                <button id="exportPresetsBtn" class="btn">エクスポート</button>
+                <button id="importPresetsBtn" class="btn">インポート</button>
               </div>
             </div>
           </div>
         </div>
+        <input id="importPresetsFile" type="file" accept="application/json" style="display:none" />
 
         <div class="header">
           <div>
@@ -204,7 +207,7 @@
       </main>
     </div>
 
-    <script src="./scripts/app.js" defer></script>
+    <script src="./scripts/app.js?v=2025-08-16-1" defer></script>
     <script defer>
       document.addEventListener('DOMContentLoaded', function () {
         try { if (typeof setupCanvasBgToggle === 'function') setupCanvasBgToggle(); } catch (e) { }
