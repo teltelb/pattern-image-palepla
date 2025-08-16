@@ -163,6 +163,10 @@
             <div class="subtle">調整内容を反映して表示します</div>
           </div>
           <div class="row">
+            <div id="bgToggle" class="bg-toggle" aria-label="キャンバス背景色切替">
+              <button type="button" class="btn btn-ghost" data-bg="white">白背景</button>
+              <button type="button" class="btn btn-ghost" data-bg="black">黒背景</button>
+            </div>
             <button id="togglePresetBtn" class="btn">プリセットを隠す</button>
           </div>
         </div>
@@ -176,5 +180,11 @@
     </div>
 
     <script src="./scripts/app.js" defer></script>
+    <script defer>
+      // 初期化: プレビュー領域の背景色トグル
+      document.addEventListener('DOMContentLoaded', function () {
+        try { if (typeof setupCanvasBgToggle === 'function') setupCanvasBgToggle(); } catch (e) { }
+      });
+    </script>
   </body>
   </html>

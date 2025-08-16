@@ -27,6 +27,31 @@ function setupThemeToggle() {
   });
 }
 
+// Preview canvas background toggle (white/black only; preview-only)
+function setupCanvasBgToggle() {
+  const container = document.getElementById('bgToggle');
+  const canvasEl = document.getElementById('preview');
+  if (!container || !canvasEl) return;
+
+  const apply = (mode) => {
+    const m = mode === 'black' ? 'black' : 'white';
+    canvasEl.classList.toggle('bg-white', m === 'white');
+    canvasEl.classList.toggle('bg-black', m === 'black');
+    try { localStorage.setItem('gpt5_preview_bg', m); } catch {}
+    const btns = container.querySelectorAll('button[data-bg]');
+    btns.forEach(b => b.classList.toggle('active', b.dataset.bg === m));
+  };
+
+  const saved = (typeof localStorage !== 'undefined' && localStorage.getItem('gpt5_preview_bg')) || 'white';
+  apply(saved);
+
+  container.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-bg]');
+    if (!btn) return;
+    apply(btn.dataset.bg);
+  });
+}
+
 function setupInputs() {
   const map = [el('file0'), el('file1'), el('file2'), el('file3')];
   map.forEach((input, idx) => {
