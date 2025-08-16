@@ -129,12 +129,31 @@ function setupInputs() {
   el('width').addEventListener('input', (e) => { state.export.width = Number(e.target.value || 0); updatePreviewSize(); render(); });
   el('height').addEventListener('input', (e) => { state.export.height = Number(e.target.value || 0); updatePreviewSize(); render(); });
   el('dpi').addEventListener('input', (e) => { state.export.dpi = Number(e.target.value || 300); });
-  el('preset').addEventListener('change', (e) => { applyPreset(e.target.value); updatePreviewSize(); render(); updateDeletePresetState(); });
+  el('preset').addEventListener('change', (e) => { applyPreset(e.target.value); updatePreviewSize(); render(); updateDeletePresetState(); tryApplyGridForPreset(e.target.value); });
   // Custom preset controls
   const saveBtn = el('savePresetBtn');
   if (saveBtn) saveBtn.addEventListener('click', onSavePreset);
+  // 追加: プリセット保存時にグリッド値も保存
+  if (saveBtn) saveBtn.addEventListener('click', () => {
+    try {
+      const name = el('presetName')?.value?.trim();
+      if (!name) return;
+      const cols = clampInt(el('gridCols')?.value, 1, 50, state.grid.cols);
+      const rows = clampInt(el('gridRows')?.value, 1, 50, state.grid.rows);
+      setPresetGrid(name, { cols, rows });
+    } catch {}
+  });
   const delBtn = el('deletePresetBtn');
   if (delBtn) delBtn.addEventListener('click', onDeletePreset);
+  // 追加: カスタム削除時にグリッド保存も削除
+  if (delBtn) delBtn.addEventListener('click', () => {
+    try {
+      const sel = el('preset');
+      const key = sel?.value || '';
+      if (!key) return;
+      removePresetGrid(key);
+    } catch {}
+  });
 
   el('gridCols').addEventListener('input', (e) => { const v = clampInt(e.target.value, 1, 50, 8); state.grid.cols = v; render(); });
   el('gridRows').addEventListener('input', (e) => { const v = clampInt(e.target.value, 1, 50, 6); state.grid.rows = v; render(); });
@@ -153,6 +172,31 @@ function setupInputs() {
     applyPresetVisibility();
     try { localStorage.setItem('gpt5_preset_visible', String(state.presetVisible)); } catch {}
   });
+}
+
+// --- Preset grid (cols/rows) persistence ---
+const GRID_KEY = 'gpt5_preset_grid_v1';
+function readPresetGridMap() {
+  try { const s = localStorage.getItem(GRID_KEY); return s ? JSON.parse(s) : {}; } catch { return {}; }
+}
+function writePresetGridMap(map) {
+  try { localStorage.setItem(GRID_KEY, JSON.stringify(map)); } catch {}
+}
+function setPresetGrid(name, grid) {
+  const map = readPresetGridMap(); map[name] = { cols: Number(grid.cols)||state.grid.cols, rows: Number(grid.rows)||state.grid.rows }; writePresetGridMap(map);
+}
+function removePresetGrid(name) {
+  const map = readPresetGridMap(); if (map && Object.prototype.hasOwnProperty.call(map, name)) { delete map[name]; writePresetGridMap(map); }
+}
+function tryApplyGridForPreset(name) {
+  if (!name) return;
+  const map = readPresetGridMap(); const g = map[name]; if (!g) return;
+  const cols = clampInt(g.cols, 1, 50, state.grid.cols);
+  const rows = clampInt(g.rows, 1, 50, state.grid.rows);
+  state.grid.cols = cols; state.grid.rows = rows;
+  const ce = el('gridCols'); if (ce) ce.value = String(cols);
+  const re = el('gridRows'); if (re) re.value = String(rows);
+  render();
 }
 
 async function loadImageAtIndex(file, idx) {
