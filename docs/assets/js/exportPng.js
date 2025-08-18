@@ -202,15 +202,15 @@
     const tf = getPatternTransform();
 
     const { targetW, targetH, dpi } = getExportSettings(w,h);
-    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
     const canvas = document.createElement('canvas');
-    canvas.width = Math.round(targetW * dpr);
-    canvas.height = Math.round(targetH * dpr);
+    // 出力ピクセル数は指定どおり（DPR非依存）
+    canvas.width = Math.round(targetW);
+    canvas.height = Math.round(targetH);
     const ctx = canvas.getContext('2d');
     if (!ctx) return alert('Canvasコンテキスト取得に失敗しました');
-    // Map layout space (container w,h) to target pixels
-    const sx = (targetW / w) * dpr;
-    const sy = (targetH / h) * dpr;
+    // プレビュー座標系 (w,h) → 出力座標系 (targetW,targetH) へ線形変換
+    const sx = (targetW / w);
+    const sy = (targetH / h);
     ctx.scale(sx, sy);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
