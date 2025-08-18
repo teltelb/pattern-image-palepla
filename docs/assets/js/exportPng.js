@@ -75,17 +75,25 @@
 
   function getExportSettings(containerW, containerH){
     const ds = document.body?.dataset || {};
-    const dpi = ds.exportDpi ? parseFloat(ds.exportDpi) : null;
-    let w = null, h = null;
+    // Try reading from common inputs if present (app既存の指定を優先)
+    const readNum = (selArr)=>{
+      for(const sel of selArr){ const el = document.querySelector(sel); if(el && el.value) return parseFloat(el.value); }
+      return null;
+    };
+    let dpi = readNum(['#exportDpi','[name="exportDpi"]']);
+    if (!dpi && ds.exportDpi) dpi = parseFloat(ds.exportDpi);
+    let w = readNum(['#exportWidth','[name="exportWidth"]']);
+    let h = readNum(['#exportHeight','[name="exportHeight"]']);
+    // Dataset fallback
     // px direct
-    if (ds.exportWidth) w = parseFloat(ds.exportWidth);
-    if (ds.exportHeight) h = parseFloat(ds.exportHeight);
+    if (!w && ds.exportWidth) w = parseFloat(ds.exportWidth);
+    if (!h && ds.exportHeight) h = parseFloat(ds.exportHeight);
     // mm → px
     const mmW = ds.exportWidthMm ? parseFloat(ds.exportWidthMm) : null;
     const mmH = ds.exportHeightMm ? parseFloat(ds.exportHeightMm) : null;
     const inW = ds.exportWidthIn ? parseFloat(ds.exportWidthIn) : null;
     const inH = ds.exportHeightIn ? parseFloat(ds.exportHeightIn) : null;
-    const useDpi = dpi || 300; // default to 300 when converting from physical units
+    const useDpi = dpi || 300; // default when converting from physical units
     if (!w && (mmW || inW)) {
       const inches = inW || (mmW / 25.4);
       w = Math.round(inches * useDpi);
