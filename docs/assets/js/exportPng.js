@@ -73,17 +73,26 @@
     return { scalePct, xPx, yPx };
   }
 
-  function getExportSettings(containerW, containerH){
+  function parseHashExport(){
+    try {
+      const m = (location.hash||'').match(/export=([0-9]+)x([0-9]+)@([0-9]+)/i);
+      if (!m) return null;
+      return { width: parseFloat(m[1]), height: parseFloat(m[2]), dpi: parseFloat(m[3]) };
+    } catch { return null; }
+  }
+
+  function getExportSettings(containerW, containerH, overrides){
     const ds = document.body?.dataset || {};
     // Try reading from common inputs if present (app既存の指定を優先)
     const readNum = (selArr)=>{
       for(const sel of selArr){ const el = document.querySelector(sel); if(el && el.value) return parseFloat(el.value); }
       return null;
     };
-    let dpi = readNum(['#exportDpi','[name="exportDpi"]']);
+    let dpi = overrides?.dpi || readNum(['#exportDpi','[name="exportDpi"]']);
     if (!dpi && ds.exportDpi) dpi = parseFloat(ds.exportDpi);
-    let w = readNum(['#exportWidth','[name="exportWidth"]']);
-    let h = readNum(['#exportHeight','[name="exportHeight"]']);
+    const hash = parseHashExport();
+    let w = overrides?.width || (hash?.width) || readNum(['#exportWidth','[name="exportWidth"]']);
+    let h = overrides?.height || (hash?.height) || readNum(['#exportHeight','[name="exportHeight"]']);
     // Dataset fallback
     // px direct
     if (!w && ds.exportWidth) w = parseFloat(ds.exportWidth);
@@ -198,7 +207,7 @@
     } catch { return false; }
   }
 
-  async function exportPNG() {
+  async function exportPNG(overrides) {
     const container = getContainer();
     if (!container) return alert('プレビュー領域が見つかりません');
     const w = Math.floor(container.clientWidth || container.getBoundingClientRect().width);
@@ -209,7 +218,7 @@
     const pat = getPatternState();
     const tf = getPatternTransform();
 
-    const { targetW, targetH, dpi } = getExportSettings(w,h);
+    const { targetW, targetH, dpi } = getExportSettings(w,h, overrides);
     const canvas = document.createElement('canvas');
     // 出力ピクセル数は指定どおり（DPR非依存）
     canvas.width = Math.round(targetW);
