@@ -164,6 +164,66 @@
       }
     } catch {}
 
+    // Draw CSS background-image elements (common for image-input previews)
+    try {
+      const cont = getContainer();
+      if (cont) {
+        const rectC = cont.getBoundingClientRect();
+        const nodes = Array.from(cont.querySelectorAll('*')).filter(el => el !== cont);
+        for (const el of nodes) {
+          const cs = getComputedStyle(el);
+          const bi = cs.backgroundImage;
+          if (!bi || bi === 'none' || !/url\(/i.test(bi)) continue;
+          const m = bi.match(/url\(["']?([^"')]+)["']?\)/i);
+          if (!m) continue;
+          const src = m[1];
+          const im = await loadImage(src);
+          if (!im || !im.naturalWidth || !im.naturalHeight) continue;
+          const rect = el.getBoundingClientRect();
+          const ew = rect.width, eh = rect.height;
+          if (!ew || !eh) continue;
+          const ratio = im.naturalWidth / im.naturalHeight;
+          let dw = ew, dh = eh;
+          // Background-size handling: contain/cover/auto X/auto Y (limited cases)
+          const bs = cs.backgroundSize.trim();
+          if (bs === 'contain') {
+            const s = Math.min(ew / im.naturalWidth, eh / im.naturalHeight);
+            dw = im.naturalWidth * s; dh = im.naturalHeight * s;
+          } else if (bs === 'cover') {
+            const s = Math.max(ew / im.naturalWidth, eh / im.naturalHeight);
+            dw = im.naturalWidth * s; dh = im.naturalHeight * s;
+          } else if (/^auto\s+\d+(px|%)$/.test(bs)) {
+            const v = parseFloat(bs.split(/\s+/)[1]);
+            if (/%$/.test(bs)) dh = eh * (v / 100); else dh = v;
+            dw = dh * ratio;
+          } else if (/^\d+(px|%)\s+auto$/.test(bs)) {
+            const v = parseFloat(bs.split(/\s+/)[0]);
+            if (/%/.test(bs)) dw = ew * (v / 100); else dw = v;
+            dh = dw / ratio;
+          } else if (/^auto\s+auto$/.test(bs) || bs === 'auto') {
+            // default: contain by height (common in our UI)
+            dh = eh; dw = dh * ratio;
+          }
+          // Background-position: handle center/default
+          let dx = rect.left - rectC.left, dy = rect.top - rectC.top;
+          const bp = cs.backgroundPosition.split(' ');
+          const bx = bp[0] || '50%';
+          const by = bp[1] || '50%';
+          const parsePos = (val, total, draw) => {
+            if (/^\d+%$/.test(val)) return (parseFloat(val) / 100) * (total - draw);
+            if (/^\d+px$/.test(val)) return parseFloat(val);
+            if (val === 'center') return (total - draw) / 2;
+            if (val === 'left' || val === 'top') return 0;
+            if (val === 'right' || val === 'bottom') return total - draw;
+            return (total - draw) / 2;
+          };
+          dx += parsePos(bx, ew, dw);
+          dy += parsePos(by, eh, dh);
+          ctx.drawImage(im, 0, 0, im.naturalWidth, im.naturalHeight, Math.round(dx), Math.round(dy), Math.round(dw), Math.round(dh));
+        }
+      }
+    } catch {}
+
     // Draw all visible IMG elements inside container (except overlay), in DOM order
     try {
       const cont = getContainer();
