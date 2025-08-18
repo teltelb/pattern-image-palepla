@@ -151,19 +151,29 @@
       }
     } catch {}
 
-    // Draw user content image if present (and not overlay)
+    // Draw all visible IMG elements inside container (except overlay), in DOM order
     try {
-      const container = getContainer();
-      const imgEl = container && container.querySelector('#previewImage, img.user-input, img[data-role="preview"]');
-      if (imgEl && imgEl.src && imgEl.id !== 'patternOverlay') {
-        const userImg = await loadImage(imgEl.src);
-        if (userImg && userImg.naturalWidth && userImg.naturalHeight) {
-          // Fit by height (contain) similar to preview
-          const ratio = userImg.naturalWidth / userImg.naturalHeight;
-          const dh = h; const dw = Math.round(dh * ratio);
-          const dx = Math.round((w - dw) / 2);
-          const dy = 0;
-          ctx.drawImage(userImg, 0, 0, userImg.naturalWidth, userImg.naturalHeight, dx, dy, dw, dh);
+      const cont = getContainer();
+      if (cont) {
+        const rectC = cont.getBoundingClientRect();
+        const imgs = Array.from(cont.querySelectorAll('img')).filter(el => el.id !== 'patternOverlay');
+        for (const el of imgs) {
+          const rect = el.getBoundingClientRect();
+          if (!rect.width || !rect.height) continue;
+          // Compute draw target coordinates relative to container
+          const dx = Math.round(rect.left - rectC.left);
+          const dy = Math.round(rect.top - rectC.top);
+          const dw = Math.round(rect.width);
+          const dh = Math.round(rect.height);
+          try {
+            ctx.drawImage(el, dx, dy, dw, dh);
+          } catch {
+            // Fallback: load by URL if possible
+            const im = await loadImage(el.src);
+            if (im && im.naturalWidth && im.naturalHeight) {
+              ctx.drawImage(im, 0, 0, im.naturalWidth, im.naturalHeight, dx, dy, dw, dh);
+            }
+          }
         }
       }
     } catch {}
