@@ -125,47 +125,55 @@
       const bin = atob(b64);
       const bytes = new Uint8Array(bin.length);
       for (let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
-      // insert pHYs after IHDR
-      const pngSig = [137,80,78,71,13,10,26,10];
-      for (let i=0;i<8;i++) if (bytes[i]!==pngSig[i]) return dataURL;
+      // PNG signature
+      const sig = [137,80,78,71,13,10,26,10];
+      for (let i=0;i<8;i++) if (bytes[i]!==sig[i]) return dataURL;
+      const u32 = (p)=> (bytes[p]<<24)|(bytes[p+1]<<16)|(bytes[p+2]<<8)|bytes[p+3];
+      const writeU32 = (arr, off, val)=>{ arr[off]=(val>>>24)&255; arr[off+1]=(val>>>16)&255; arr[off+2]=(val>>>8)&255; arr[off+3]=val&255; };
       let pos = 8;
-      // IHDR
-      const ihdrLen = (bytes[pos]<<24)|(bytes[pos+1]<<16)|(bytes[pos+2]<<8)|bytes[pos+3];
-      pos += 4; // len
-      const type = String.fromCharCode(bytes[pos],bytes[pos+1],bytes[pos+2],bytes[pos+3]);
-      if (type !== 'IHDR') return dataURL;
-      pos += 4 + ihdrLen + 4; // skip IHDR chunk+CRC
-      const ppm = Math.round((dpi) * 39.37007874);
-      const pHYsData = new Uint8Array(9);
-      pHYsData[0]=(ppm>>>24)&255; pHYsData[1]=(ppm>>>16)&255; pHYsData[2]=(ppm>>>8)&255; pHYsData[3]=ppm&255;
-      pHYsData[4]=(ppm>>>24)&255; pHYsData[5]=(ppm>>>16)&255; pHYsData[6]=(ppm>>>8)&255; pHYsData[7]=ppm&255;
-      pHYsData[8]=1; // unit: meter
-      const chunkType = new Uint8Array([112,72,89,115]); // 'pHYs'
-      const length = new Uint8Array([0,0,0,9]);
-      // CRC32
-      function crc32(arr){
-        let c = ~0; const tbl = (function(){
-          const t = new Uint32Array(256);
-          for (let n=0;n<256;n++){ let c=n; for (let k=0;k<8;k++) c = (c&1)?(0xEDB88320^(c>>>1)):(c>>>1); t[n]=c; }
-          return t;
-        })();
-        for (let i=0;i<arr.length;i++) c = tbl[(c^arr[i])&255] ^ (c>>>8);
-        return (~c)>>>0;
+      let ihdrEnd = -1, firstIDAT = -1, pHYsPos = -1, pHYsLen = 0;
+      while (pos < bytes.length) {
+        const len = u32(pos);
+        const type = String.fromCharCode(bytes[pos+4],bytes[pos+5],bytes[pos+6],bytes[pos+7]);
+        if (type==='IHDR') ihdrEnd = pos + 8 + len + 4;
+        if (type==='IDAT' && firstIDAT<0) firstIDAT = pos;
+        if (type==='pHYs') { pHYsPos = pos; pHYsLen = len; }
+        pos += 8 + len + 4;
       }
-      const crcInput = new Uint8Array(4 + pHYsData.length);
-      crcInput.set(chunkType,0); crcInput.set(pHYsData,4);
-      const crc = crc32(crcInput);
-      const crcBytes = new Uint8Array([ (crc>>>24)&255, (crc>>>16)&255, (crc>>>8)&255, crc&255 ]);
-      // Assemble new PNG: sig + upToPos + pHYs + rest
-      const before = bytes.slice(0,pos);
-      const after = bytes.slice(pos);
-      const total = new Uint8Array(before.length + 4 + 4 + pHYsData.length + 4 + after.length);
-      let o=0; total.set(before,o); o+=before.length;
-      total.set(length,o); o+=4; total.set(chunkType,o); o+=4; total.set(pHYsData,o); o+=pHYsData.length; total.set(crcBytes,o); o+=4;
-      total.set(after,o);
-      let out=''; for (let i=0;i<total.length;i++) out+=String.fromCharCode(total[i]);
-      return 'data:image/png;base64,' + btoa(out);
-    } catch {
+      const ppm = Math.round(dpi * 39.37007874);
+      const pHYsData = new Uint8Array(9);
+      writeU32(pHYsData,0,ppm); writeU32(pHYsData,4,ppm); pHYsData[8]=1;
+      const typeArr = new Uint8Array([112,72,89,115]); // 'pHYs'
+      const makeCRC = (payload)=>{
+        const tbl = (function(){ const t=new Uint32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1); t[n]=c; } return t; })();
+        let c = ~0; for (let i=0;i<payload.length;i++) c = tbl[(c^payload[i])&255] ^ (c>>>8); return (~c)>>>0;
+      };
+      const lenArr = new Uint8Array(4); writeU32(lenArr,0,9);
+      const crcPayload = new Uint8Array(4 + 9); crcPayload.set(typeArr,0); crcPayload.set(pHYsData,4);
+      const crcVal = makeCRC(crcPayload);
+      const crcArr = new Uint8Array(4); writeU32(crcArr,0,crcVal);
+
+      let out;
+      if (pHYsPos >= 0 && pHYsLen === 9) {
+        // Replace existing pHYs data and CRC
+        const outBytes = bytes.slice();
+        outBytes.set(pHYsData, pHYsPos + 8);
+        outBytes.set(crcArr, pHYsPos + 8 + 9);
+        out = outBytes;
+      } else {
+        // Insert before first IDAT, or after IHDR if no IDAT found (unlikely)
+        const insertAt = (firstIDAT>=0 ? firstIDAT : ihdrEnd);
+        const before = bytes.slice(0, insertAt);
+        const after = bytes.slice(insertAt);
+        out = new Uint8Array(before.length + 4 + 4 + 9 + 4 + after.length);
+        let o=0; out.set(before,o); o+=before.length;
+        out.set(lenArr,o); o+=4; out.set(typeArr,o); o+=4; out.set(pHYsData,o); o+=9; out.set(crcArr,o); o+=4;
+        out.set(after,o);
+      }
+      let s=''; for (let i=0;i<out.length;i++) s+=String.fromCharCode(out[i]);
+      return 'data:image/png;base64,' + btoa(s);
+    } catch (e){
+      console.warn('pHYs inject failed', e);
       return dataURL;
     }
   }
