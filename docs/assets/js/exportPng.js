@@ -138,6 +138,19 @@
       }
     }
 
+    // Draw pattern next (middle layer)
+    if (pat.src) {
+      const pImg = await loadImage(pat.src);
+      if (pImg && pImg.naturalWidth && pImg.naturalHeight) {
+        const ratio = pImg.naturalWidth / pImg.naturalHeight;
+        const dh = Math.round(h * (tf.scalePct / 100));
+        const dw = Math.round(dh * ratio);
+        const dx = Math.round((w - dw) / 2 + tf.xPx);
+        const dy = Math.round((h - dh) / 2 + tf.yPx);
+        ctx.drawImage(pImg, 0, 0, pImg.naturalWidth, pImg.naturalHeight, dx, dy, dw, dh);
+      }
+    }
+
     // Draw user content canvases (if any) in DOM order, scaled to preview size
     try {
       const container = getContainer();
@@ -178,18 +191,7 @@
       }
     } catch {}
 
-    // Draw pattern (height fit with scale, offset px)
-    if (pat.src) {
-      const pImg = await loadImage(pat.src);
-      if (pImg && pImg.naturalWidth && pImg.naturalHeight) {
-        const ratio = pImg.naturalWidth / pImg.naturalHeight;
-        const dh = Math.round(h * (tf.scalePct / 100));
-        const dw = Math.round(dh * ratio);
-        const dx = Math.round((w - dw) / 2 + tf.xPx);
-        const dy = Math.round((h - dh) / 2 + tf.yPx);
-        ctx.drawImage(pImg, 0, 0, pImg.naturalWidth, pImg.naturalHeight, dx, dy, dw, dh);
-      }
-    }
+    // Pattern is already drawn before user content to keep it below image input
 
     // Trigger download
     try {
