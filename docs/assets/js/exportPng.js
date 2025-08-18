@@ -138,6 +138,36 @@
       }
     }
 
+    // Draw user content canvases (if any) in DOM order, scaled to preview size
+    try {
+      const container = getContainer();
+      const canvases = container ? Array.from(container.querySelectorAll('canvas')) : [];
+      for (const cnv of canvases) {
+        const cw = cnv.width || cnv.getBoundingClientRect().width;
+        const ch = cnv.height || cnv.getBoundingClientRect().height;
+        if (!cw || !ch) continue;
+        // Draw stretched to fit preview area; assumes source canvas already has correct composition
+        ctx.drawImage(cnv, 0, 0, w, h);
+      }
+    } catch {}
+
+    // Draw user content image if present (and not overlay)
+    try {
+      const container = getContainer();
+      const imgEl = container && container.querySelector('#previewImage, img.user-input, img[data-role="preview"]');
+      if (imgEl && imgEl.src && imgEl.id !== 'patternOverlay') {
+        const userImg = await loadImage(imgEl.src);
+        if (userImg && userImg.naturalWidth && userImg.naturalHeight) {
+          // Fit by height (contain) similar to preview
+          const ratio = userImg.naturalWidth / userImg.naturalHeight;
+          const dh = h; const dw = Math.round(dh * ratio);
+          const dx = Math.round((w - dw) / 2);
+          const dy = 0;
+          ctx.drawImage(userImg, 0, 0, userImg.naturalWidth, userImg.naturalHeight, dx, dy, dw, dh);
+        }
+      }
+    } catch {}
+
     // Draw pattern (height fit with scale, offset px)
     if (pat.src) {
       const pImg = await loadImage(pat.src);
