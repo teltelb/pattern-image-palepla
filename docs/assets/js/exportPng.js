@@ -88,11 +88,11 @@
       for(const sel of selArr){ const el = document.querySelector(sel); if(el && el.value) return parseFloat(el.value); }
       return null;
     };
-    let dpi = overrides?.dpi || readNum(['#exportDpi','[name="exportDpi"]']);
+    let dpi = overrides?.dpi || readNum(['#exportDpi','[name="exportDpi"]','#dpi','#pngDpi','#printDpi','#outputDpi']);
     if (!dpi && ds.exportDpi) dpi = parseFloat(ds.exportDpi);
     const hash = parseHashExport();
-    let w = overrides?.width || (hash?.width) || readNum(['#exportWidth','[name="exportWidth"]']);
-    let h = overrides?.height || (hash?.height) || readNum(['#exportHeight','[name="exportHeight"]']);
+    let w = overrides?.width || (hash?.width) || readNum(['#exportWidth','[name="exportWidth"]','#outW','#pngWidth','#outputWidth']);
+    let h = overrides?.height || (hash?.height) || readNum(['#exportHeight','[name="exportHeight"]','#outH','#pngHeight','#outputHeight']);
     // Dataset fallback
     // px direct
     if (!w && ds.exportWidth) w = parseFloat(ds.exportWidth);
@@ -227,6 +227,7 @@
     const tf = getPatternTransform();
 
     const { targetW, targetH, dpi } = getExportSettings(w,h, overrides);
+    try { console.info('[export] resolved', { width: targetW, height: targetH, dpi: dpi||null }); } catch {}
     const canvas = document.createElement('canvas');
     // 出力ピクセル数は指定どおり（DPR非依存）
     canvas.width = Math.round(targetW);
@@ -388,7 +389,9 @@
     try {
       const a = document.createElement('a');
       a.download = 'preview.png';
-      a.href = toDataURLWithDPI(canvas, 'image/png', dpi);
+      const outURL = toDataURLWithDPI(canvas, 'image/png', dpi);
+      try { console.info('[export] png size', { width: canvas.width, height: canvas.height, dpiWritten: dpi||null }); } catch {}
+      a.href = outURL;
       document.body.appendChild(a);
       a.click();
       setTimeout(() => { try { document.body.removeChild(a); } catch {} }, 0);
@@ -411,7 +414,16 @@
       btn = all.find(b => /png|保存|download|export/i.test((b.textContent || '').trim()));
     }
     if (!btn) return;
-    const handler = (e) => { try { e.preventDefault(); e.stopPropagation(); } catch {}; exportPNG(); };
+    const handler = (e) => {
+      try { e.preventDefault(); e.stopImmediatePropagation(); } catch {};
+      // Allow per-button data attributes to override
+      const ds = btn.dataset || {};
+      const ov = {};
+      if (ds.exportWidth) ov.width = parseFloat(ds.exportWidth);
+      if (ds.exportHeight) ov.height = parseFloat(ds.exportHeight);
+      if (ds.exportDpi) ov.dpi = parseFloat(ds.exportDpi);
+      exportPNG(ov);
+    };
     btn.addEventListener('click', handler, { capture: true });
   }
 
