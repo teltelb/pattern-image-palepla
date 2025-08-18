@@ -73,6 +73,86 @@
     return { scalePct, xPx, yPx };
   }
 
+  function getExportSettings(containerW, containerH){
+    const ds = document.body?.dataset || {};
+    const dpi = ds.exportDpi ? parseFloat(ds.exportDpi) : null;
+    let w = null, h = null;
+    // px direct
+    if (ds.exportWidth) w = parseFloat(ds.exportWidth);
+    if (ds.exportHeight) h = parseFloat(ds.exportHeight);
+    // mm → px
+    const mmW = ds.exportWidthMm ? parseFloat(ds.exportWidthMm) : null;
+    const mmH = ds.exportHeightMm ? parseFloat(ds.exportHeightMm) : null;
+    const inW = ds.exportWidthIn ? parseFloat(ds.exportWidthIn) : null;
+    const inH = ds.exportHeightIn ? parseFloat(ds.exportHeightIn) : null;
+    const useDpi = dpi || 300; // default to 300 when converting from physical units
+    if (!w && (mmW || inW)) {
+      const inches = inW || (mmW / 25.4);
+      w = Math.round(inches * useDpi);
+    }
+    if (!h && (mmH || inH)) {
+      const inches = inH || (mmH / 25.4);
+      h = Math.round(inches * useDpi);
+    }
+    // Preserve aspect if only one provided
+    if (w && !h) h = Math.round(containerH * (w / containerW));
+    if (h && !w) w = Math.round(containerW * (h / containerH));
+    return { targetW: w || containerW, targetH: h || containerH, dpi: dpi || null };
+  }
+
+  function toDataURLWithDPI(canvas, mime, dpi){
+    const dataURL = canvas.toDataURL(mime || 'image/png');
+    if (!dpi || !/^data:image\/png;base64,/.test(dataURL)) return dataURL;
+    try {
+      const b64 = dataURL.split(',')[1];
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+      // insert pHYs after IHDR
+      const pngSig = [137,80,78,71,13,10,26,10];
+      for (let i=0;i<8;i++) if (bytes[i]!==pngSig[i]) return dataURL;
+      let pos = 8;
+      // IHDR
+      const ihdrLen = (bytes[pos]<<24)|(bytes[pos+1]<<16)|(bytes[pos+2]<<8)|bytes[pos+3];
+      pos += 4; // len
+      const type = String.fromCharCode(bytes[pos],bytes[pos+1],bytes[pos+2],bytes[pos+3]);
+      if (type !== 'IHDR') return dataURL;
+      pos += 4 + ihdrLen + 4; // skip IHDR chunk+CRC
+      const ppm = Math.round((dpi) * 39.37007874);
+      const pHYsData = new Uint8Array(9);
+      pHYsData[0]=(ppm>>>24)&255; pHYsData[1]=(ppm>>>16)&255; pHYsData[2]=(ppm>>>8)&255; pHYsData[3]=ppm&255;
+      pHYsData[4]=(ppm>>>24)&255; pHYsData[5]=(ppm>>>16)&255; pHYsData[6]=(ppm>>>8)&255; pHYsData[7]=ppm&255;
+      pHYsData[8]=1; // unit: meter
+      const chunkType = new Uint8Array([112,72,89,115]); // 'pHYs'
+      const length = new Uint8Array([0,0,0,9]);
+      // CRC32
+      function crc32(arr){
+        let c = ~0; const tbl = (function(){
+          const t = new Uint32Array(256);
+          for (let n=0;n<256;n++){ let c=n; for (let k=0;k<8;k++) c = (c&1)?(0xEDB88320^(c>>>1)):(c>>>1); t[n]=c; }
+          return t;
+        })();
+        for (let i=0;i<arr.length;i++) c = tbl[(c^arr[i])&255] ^ (c>>>8);
+        return (~c)>>>0;
+      }
+      const crcInput = new Uint8Array(4 + pHYsData.length);
+      crcInput.set(chunkType,0); crcInput.set(pHYsData,4);
+      const crc = crc32(crcInput);
+      const crcBytes = new Uint8Array([ (crc>>>24)&255, (crc>>>16)&255, (crc>>>8)&255, crc&255 ]);
+      // Assemble new PNG: sig + upToPos + pHYs + rest
+      const before = bytes.slice(0,pos);
+      const after = bytes.slice(pos);
+      const total = new Uint8Array(before.length + 4 + 4 + pHYsData.length + 4 + after.length);
+      let o=0; total.set(before,o); o+=before.length;
+      total.set(length,o); o+=4; total.set(chunkType,o); o+=4; total.set(pHYsData,o); o+=pHYsData.length; total.set(crcBytes,o); o+=4;
+      total.set(after,o);
+      let out=''; for (let i=0;i<total.length;i++) out+=String.fromCharCode(total[i]);
+      return 'data:image/png;base64,' + btoa(out);
+    } catch {
+      return dataURL;
+    }
+  }
+
   function isVisible(el){
     const rect = el.getBoundingClientRect();
     const cs = getComputedStyle(el);
@@ -121,13 +201,17 @@
     const pat = getPatternState();
     const tf = getPatternTransform();
 
+    const { targetW, targetH, dpi } = getExportSettings(w,h);
     const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
     const canvas = document.createElement('canvas');
-    canvas.width = Math.round(w * dpr);
-    canvas.height = Math.round(h * dpr);
+    canvas.width = Math.round(targetW * dpr);
+    canvas.height = Math.round(targetH * dpr);
     const ctx = canvas.getContext('2d');
     if (!ctx) return alert('Canvasコンテキスト取得に失敗しました');
-    ctx.scale(dpr, dpr);
+    // Map layout space (container w,h) to target pixels
+    const sx = (targetW / w) * dpr;
+    const sy = (targetH / h) * dpr;
+    ctx.scale(sx, sy);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
@@ -279,7 +363,7 @@
     try {
       const a = document.createElement('a');
       a.download = 'preview.png';
-      a.href = canvas.toDataURL('image/png');
+      a.href = toDataURLWithDPI(canvas, 'image/png', dpi);
       document.body.appendChild(a);
       a.click();
       setTimeout(() => { try { document.body.removeChild(a); } catch {} }, 0);
