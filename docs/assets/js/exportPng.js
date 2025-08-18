@@ -73,6 +73,18 @@
     return { scalePct, xPx, yPx };
   }
 
+  function isVisible(el){
+    const rect = el.getBoundingClientRect();
+    const cs = getComputedStyle(el);
+    return rect.width > 0 && rect.height > 0 && cs.display !== 'none' && cs.visibility !== 'hidden' && cs.opacity !== '0';
+  }
+
+  function parseBgUrl(str){
+    if (!str || str === 'none') return null;
+    const m = str.match(/url\(["']?([^"')]+)["']?\)/i);
+    return m ? m[1] : null;
+  }
+
   function loadImage(src) {
     return new Promise((resolve) => {
       if (!src) return resolve(null);
@@ -154,29 +166,44 @@
     // Draw user content canvases (if any) in DOM order, scaled to preview size
     try {
       const container = getContainer();
-      const canvases = container ? Array.from(container.querySelectorAll('canvas')) : [];
+      let canvases = [];
+      const customSel = (document.body.getAttribute('data-user-elements')||'').split(',').map(s=>s.trim()).filter(Boolean);
+      if (customSel.length){
+        customSel.forEach(sel => {
+          try { canvases.push(...Array.from(document.querySelectorAll(sel)).filter(e=>e.tagName==='CANVAS')); } catch {}
+        });
+      }
+      if (!canvases.length && container) canvases = Array.from(container.querySelectorAll('canvas'));
+      if (!canvases.length) canvases = Array.from(document.querySelectorAll('#renderCanvas, .konvajs-content canvas, canvas'));
+      canvases = canvases.filter(isVisible);
       for (const cnv of canvases) {
         const cw = cnv.width || cnv.getBoundingClientRect().width;
         const ch = cnv.height || cnv.getBoundingClientRect().height;
         if (!cw || !ch) continue;
-        // Draw stretched to fit preview area; assumes source canvas already has correct composition
-        ctx.drawImage(cnv, 0, 0, w, h);
+        // If canvas matches preview size ratio closely, stretch; else fit by height
+        const ratio = cw / ch;
+        const dwByH = h * ratio;
+        const dx = Math.round((w - dwByH) / 2);
+        ctx.drawImage(cnv, 0, 0, cw, ch, dx, 0, Math.round(dwByH), h);
       }
     } catch {}
 
     // Draw CSS background-image elements (common for image-input previews)
     try {
       const cont = getContainer();
-      if (cont) {
-        const rectC = cont.getBoundingClientRect();
-        const nodes = Array.from(cont.querySelectorAll('*')).filter(el => el !== cont);
-        for (const el of nodes) {
-          const cs = getComputedStyle(el);
-          const bi = cs.backgroundImage;
-          if (!bi || bi === 'none' || !/url\(/i.test(bi)) continue;
-          const m = bi.match(/url\(["']?([^"')]+)["']?\)/i);
-          if (!m) continue;
-          const src = m[1];
+      const rectC = cont ? cont.getBoundingClientRect() : {left:0, top:0, width: w, height: h};
+      let nodes = [];
+      const customSel = (document.body.getAttribute('data-user-elements')||'').split(',').map(s=>s.trim()).filter(Boolean);
+      if (customSel.length){
+        customSel.forEach(sel => { try { nodes.push(...Array.from(document.querySelectorAll(sel))); } catch {} });
+      }
+      if (!nodes.length && cont) nodes = Array.from(cont.querySelectorAll('*'));
+      if (!nodes.length) nodes = Array.from(document.querySelectorAll('[data-role="image-input"], .image-input, .preview-image'));
+      for (const el of nodes) {
+        if (!isVisible(el)) continue;
+        const cs = getComputedStyle(el);
+        const src = parseBgUrl(cs.backgroundImage);
+        if (!src) continue;
           const im = await loadImage(src);
           if (!im || !im.naturalWidth || !im.naturalHeight) continue;
           const rect = el.getBoundingClientRect();
@@ -221,32 +248,27 @@
           dy += parsePos(by, eh, dh);
           ctx.drawImage(im, 0, 0, im.naturalWidth, im.naturalHeight, Math.round(dx), Math.round(dy), Math.round(dw), Math.round(dh));
         }
-      }
     } catch {}
 
-    // Draw all visible IMG elements inside container (except overlay), in DOM order
+    // Draw all visible IMG elements (except overlay), in DOM order
     try {
       const cont = getContainer();
-      if (cont) {
-        const rectC = cont.getBoundingClientRect();
-        const imgs = Array.from(cont.querySelectorAll('img')).filter(el => el.id !== 'patternOverlay');
-        for (const el of imgs) {
-          const rect = el.getBoundingClientRect();
-          if (!rect.width || !rect.height) continue;
-          // Compute draw target coordinates relative to container
-          const dx = Math.round(rect.left - rectC.left);
-          const dy = Math.round(rect.top - rectC.top);
-          const dw = Math.round(rect.width);
-          const dh = Math.round(rect.height);
-          try {
-            ctx.drawImage(el, dx, dy, dw, dh);
-          } catch {
-            // Fallback: load by URL if possible
-            const im = await loadImage(el.src);
-            if (im && im.naturalWidth && im.naturalHeight) {
-              ctx.drawImage(im, 0, 0, im.naturalWidth, im.naturalHeight, dx, dy, dw, dh);
-            }
-          }
+      const rectC = cont ? cont.getBoundingClientRect() : {left:0, top:0};
+      const selectors = ['img.user-input', 'img[data-role="preview"]', '#previewImage', 'img'];
+      let imgs = [];
+      for (const sel of selectors) { try { imgs.push(...Array.from((cont||document).querySelectorAll(sel))); } catch {} }
+      imgs = imgs.filter(el => el.id !== 'patternOverlay' && isVisible(el));
+      for (const el of imgs) {
+        const rect = el.getBoundingClientRect();
+        const dx = Math.round(rect.left - rectC.left);
+        const dy = Math.round(rect.top - rectC.top);
+        const dw = Math.round(rect.width);
+        const dh = Math.round(rect.height);
+        try {
+          ctx.drawImage(el, dx, dy, dw, dh);
+        } catch {
+          const im = await loadImage(el.src);
+          if (im && im.naturalWidth && im.naturalHeight) ctx.drawImage(im, 0, 0, im.naturalWidth, im.naturalHeight, dx, dy, dw, dh);
         }
       }
     } catch {}
