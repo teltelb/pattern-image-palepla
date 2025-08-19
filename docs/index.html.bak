@@ -208,6 +208,7 @@
     </div>
 
     <script src="./scripts/app.js?v=2025-08-16-1" defer></script>
+    <script src="./scripts/export-override.js?v=2025-08-19-1" defer></script>
     <script defer>
       document.addEventListener('DOMContentLoaded', function () {
         try { if (typeof setupCanvasBgToggle === 'function') setupCanvasBgToggle(); } catch (e) { }
