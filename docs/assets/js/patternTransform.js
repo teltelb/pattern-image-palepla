@@ -17,11 +17,13 @@
   }
 
   function applyFixed() {
+    // Keep overlay transforms set by patternSettings.js; no-op here.
     const container = getContainer();
     if (!container) return;
     const ov = container.querySelector('#patternOverlay');
-    if (!ov || ov.style.display === 'none') return;
-    ov.style.transform = 'none';
+    if (!ov) return;
+    // Ensure overlay remains on top
+    try { ov.style.zIndex = '1000'; } catch {}
   }
 
   function removeControls() {
@@ -40,4 +42,3 @@
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
-

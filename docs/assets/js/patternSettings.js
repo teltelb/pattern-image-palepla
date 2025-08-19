@@ -113,61 +113,36 @@
   }
 
   function applyOverlayTransform(container, ov) {
-    // Fixed display: no manual transform, always contain
-    ov.style.transform = 'none';
+    // Use stored transform parameters (translate + scale)
+    try {
+      const tf = getPatternTransform();
+      const s = Math.max(0.01, (tf.scalePct||100)/100);
+      const x = tf.xPx||0, y = tf.yPx||0;
+      ov.style.transform = `translate(${x}px, ${y}px) scale(${s})`;
+    } catch {
+      ov.style.transform = 'none';
+    }
   }
 
   function applyComposite(patternSrc) {
     const container = getPreviewContainer();
-    const bg = getBgState();
-
-    // Compose pattern (top) and background (bottom) as container backgrounds
-    const layers = [];
-    const repeats = [];
-    const positions = [];
-    const sizes = [];
-    const sColor = letterboxColorFor(bg);
-
-    if (patternSrc) {
-      const tf = getPatternTransform();
-      layers.push(`url('${patternSrc}')`);
-      repeats.push('no-repeat');
-      positions.push(`calc(50% + ${tf.xPx}px) calc(50% + ${tf.yPx}px)`);
-      sizes.push(`auto ${tf.scalePct}%`);
-    }
-    if (bg.type === 'image' && bg.src) {
-      layers.push(`url('${bg.src}')`);
-      repeats.push('no-repeat');
-      positions.push('center');
-      sizes.push('auto 100%');
-    }
-
-    const sImage = layers.join(', ');
-    const sRepeat = repeats.join(', ');
-    const sPos = positions.join(', ');
-    const sSize = sizes.join(', ');
-    const sig = sImage + '|' + sRepeat + '|' + sPos + '|' + sSize + '|' + sColor;
-    if (container.dataset.bgSig !== sig) {
-      container.dataset.bgSig = sig;
-      container.style.backgroundImage = sImage;
-      container.style.backgroundRepeat = sRepeat;
-      container.style.backgroundPosition = sPos;
-      container.style.backgroundSize = sSize;
-      container.style.backgroundColor = sColor;
-    }
-
-    // Ensure overlay is hidden (we use background layers to guarantee stacking)
+    // Pattern is rendered as an overlay image above the preview.
     const ov = ensureOverlay(container);
-    ov.style.display = 'none';
-
-    // If a preview <img> exists, hide its content so it won't cover overlay
-    const baseImg = container.querySelector('#previewImage, img:not(#patternOverlay)');
-    if (baseImg) {
-      baseImg.src = PX;
-      baseImg.style.height = '100%';
-      baseImg.style.width = 'auto';
-      baseImg.style.objectFit = '';
+    if (patternSrc) {
+      if (ov.dataset.src !== patternSrc) {
+        ov.style.display = 'none';
+        ov.onload = () => { ov.style.display = ''; applyOverlayTransform(container, ov); };
+        ov.src = patternSrc;
+        ov.dataset.src = patternSrc;
+      }
+      ov.style.display = '';
+      applyOverlayTransform(container, ov);
+    } else {
+      ov.style.display = 'none';
+      ov.removeAttribute('src');
+      delete ov.dataset.src;
     }
+    // Do not touch container background here. bgSettings.js manages background state.
   }
 
   function insertPatternButton() {
