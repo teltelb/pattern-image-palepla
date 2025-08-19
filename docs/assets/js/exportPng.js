@@ -88,11 +88,23 @@
       for(const sel of selArr){ const el = document.querySelector(sel); if(el && el.value) return parseFloat(el.value); }
       return null;
     };
+    // DPI
     let dpi = overrides?.dpi || readNum(['#exportDpi','[name="exportDpi"]','#dpi','#pngDpi','#printDpi','#outputDpi']);
     if (!dpi && ds.exportDpi) dpi = parseFloat(ds.exportDpi);
     const hash = parseHashExport();
-    let w = overrides?.width || (hash?.width) || readNum(['#exportWidth','[name="exportWidth"]','#outW','#pngWidth','#outputWidth']);
-    let h = overrides?.height || (hash?.height) || readNum(['#exportHeight','[name="exportHeight"]','#outH','#pngHeight','#outputHeight']);
+    // Width/Height: support app inputs (#width/#height) and fallbacks
+    let w = overrides?.width || (hash?.width) || readNum(['#width','#exportWidth','[name="exportWidth"]','#outW','#pngWidth','#outputWidth']);
+    let h = overrides?.height || (hash?.height) || readNum(['#height','#exportHeight','[name="exportHeight"]','#outH','#pngHeight','#outputHeight']);
+    // Unit handling for app inputs
+    const unitEl = document.querySelector('#unit');
+    const unitVal = unitEl && unitEl.value ? String(unitEl.value).toLowerCase() : null;
+    // If app specifies mm, convert to px using DPI
+    if ((unitVal === 'mm') && (w || h)) {
+      const useDpiForMm = dpi || 300;
+      const mmToPx = (mm)=> Math.round((parseFloat(mm)||0) / 25.4 * useDpiForMm);
+      if (w) w = mmToPx(w);
+      if (h) h = mmToPx(h);
+    }
     // Dataset fallback
     // px direct
     if (!w && ds.exportWidth) w = parseFloat(ds.exportWidth);
@@ -226,7 +238,17 @@
     const pat = getPatternState();
     const tf = getPatternTransform();
 
-    const { targetW, targetH, dpi } = getExportSettings(w,h, overrides);
+    let { targetW, targetH, dpi } = getExportSettings(w,h, overrides);
+    // Cap total output pixels to avoid crashes on huge sizes
+    try {
+      const maxPx = (window.MAX_PIXELS && Number.isFinite(window.MAX_PIXELS)) ? window.MAX_PIXELS : 50_000_000;
+      const total = Math.max(1, Math.floor(targetW)) * Math.max(1, Math.floor(targetH));
+      if (total > maxPx) {
+        const scale = Math.sqrt(maxPx / total);
+        targetW = Math.max(1, Math.floor(targetW * scale));
+        targetH = Math.max(1, Math.floor(targetH * scale));
+      }
+    } catch {}
     try { console.info('[export] resolved', { width: targetW, height: targetH, dpi: dpi||null }); } catch {}
     const canvas = document.createElement('canvas');
     // 出力ピクセル数は指定どおり（DPR非依存）
