@@ -11,8 +11,11 @@
         if (el) return el;
       }
     } catch {}
-    // Common selectors
-    let el = document.querySelector('#preview, #previewArea, .preview, [data-role="preview"]');
+    // Common selectors: prefer container over canvas so background sits beneath overlays/canvas
+    let el = document.querySelector('#previewArea, .preview-area, [data-role="preview"]');
+    if (el) return el;
+    // Fallback to canvas
+    el = document.querySelector('#preview');
     if (el) return el;
     // If a dedicated preview <img> exists
     el = document.querySelector('#previewImage, .preview img');

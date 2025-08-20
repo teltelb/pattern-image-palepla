@@ -93,7 +93,8 @@
       wrap.style.width = '0px';
       wrap.style.height = '0px';
       wrap.style.overflow = 'hidden';
-      wrap.style.zIndex = '9999';
+      // Place overlay between background (container) and canvas (top)
+      wrap.style.zIndex = '1';
       const cs = getComputedStyle(container);
       if (cs.position === 'static') container.style.position = 'relative';
       container.appendChild(wrap);
