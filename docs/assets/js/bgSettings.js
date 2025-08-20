@@ -227,6 +227,7 @@
         preview.style.backgroundSize = '';
         preview.style.backgroundColor = 'transparent';
         rememberBackground('none');
+        try { window.postMessage({ type: 'patternParamsChanged' }, '*'); } catch {}
       } else if (value === 'white' || value === 'black') {
         if (isImg) {
           preview.src = px;
@@ -236,6 +237,7 @@
         }
         setLayers(value === 'white' ? '#ffffff' : '#000000', null);
         rememberBackground(value);
+        try { window.postMessage({ type: 'patternParamsChanged' }, '*'); } catch {}
       } else if (value === 'image' && imgSrc) {
         const letterbox = getLetterboxColor();
         if (isImg) {
@@ -246,13 +248,14 @@
         }
         setLayers(letterbox, imgSrc);
         rememberBackground('image', imgSrc);
+        try { window.postMessage({ type: 'patternParamsChanged' }, '*'); } catch {}
       }
       return true;
     }
     // Fallback: if preview not found, try existing buttons if present
     const { whiteBtn, blackBtn } = findButtons();
-    if (value === 'white' && whiteBtn) { rememberBackground('white'); whiteBtn.click?.(); return true; }
-    if (value === 'black' && blackBtn) { rememberBackground('black'); blackBtn.click?.(); return true; }
+    if (value === 'white' && whiteBtn) { rememberBackground('white'); whiteBtn.click?.(); try { window.postMessage({ type: 'patternParamsChanged' }, '*'); } catch {} return true; }
+    if (value === 'black' && blackBtn) { rememberBackground('black'); blackBtn.click?.(); try { window.postMessage({ type: 'patternParamsChanged' }, '*'); } catch {} return true; }
     return false;
   }
 
