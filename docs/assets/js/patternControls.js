@@ -79,7 +79,7 @@
 
     const rowX = mkRow('X(px)', 'patXRange', 'patXNum', -1000, 1000, 1, 'px');
     const rowY = mkRow('Y(px)', 'patYRange', 'patYNum', -1000, 1000, 1, 'px');
-    const rowS = mkRow('拡縮率(%)', 'patSRange', 'patSNum', 50, 150, 1, '%');
+    const rowS = mkRow('拡縮率(%)', 'patSRange', 'patSNum', 100, 150, 1, '%');
 
     [rowX, rowY, rowS].forEach(r => {
       panel.appendChild(r.label);
@@ -87,6 +87,23 @@
       panel.appendChild(r.valueBox);
       panel.appendChild(r.suf);
     });
+
+    // X/Y リセットボタン（X=0, Y=0）
+    const resetBtn = document.createElement('button');
+    resetBtn.type = 'button';
+    resetBtn.id = 'patXYReset';
+    resetBtn.textContent = '位置リセット (X/Y=0)';
+    resetBtn.className = 'btn';
+    resetBtn.style.gridColumn = '1 / -1';
+    resetBtn.addEventListener('click', () => {
+      rowX.range.value = '0';
+      rowX.valueBox.value = '0';
+      rowY.range.value = '0';
+      rowY.valueBox.value = '0';
+      // emit() は現在値を保存し、プレビューへ反映
+      emit();
+    });
+    panel.appendChild(resetBtn);
 
     if (anchor && anchor.parentNode) {
       anchor.parentNode.insertBefore(panel, anchor.nextSibling);
@@ -123,7 +140,7 @@
       const x = parseFloat(rowX.valueBox.value || '0') || 0;
       const y = parseFloat(rowY.valueBox.value || '0') || 0;
       const s = parseFloat(rowS.valueBox.value || '100') || 100;
-      const ss = Math.max(50, Math.min(150, s));
+      const ss = Math.max(100, Math.min(150, s));
       // clamp x,y to current slider bounds
       const xmin = parseFloat(rowX.range.min); const xmax = parseFloat(rowX.range.max);
       const ymin = parseFloat(rowY.range.min); const ymax = parseFloat(rowY.range.max);

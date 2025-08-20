@@ -3,21 +3,16 @@
 (function(){
   const PX = 'data:image/gif;base64,R0lGODlhAQABAAAAACw='; // 1x1 transparent
 
-  function getPreviewContainer() {
-    try {
-      const sel = document.body?.getAttribute('data-preview-selector');
-      if (sel) {
-        const el = document.querySelector(sel);
-        if (el) return el;
-      }
-    } catch {}
-    let el = document.querySelector('#preview, #previewArea, .preview, [data-role="preview"]');
-    if (el) return el;
-    const img = document.querySelector('#previewImage, .preview img');
-    if (img && img.parentElement) return img.parentElement;
-    const canvas = document.querySelector('#mainCanvas, canvas');
-    if (canvas && canvas.parentElement) return canvas.parentElement;
-    return document.body;
+  function getPreviewRefs() {
+    // Returns { target, container }
+    let target = document.getElementById('preview');
+    if (!target) target = document.querySelector('canvas#preview, #mainCanvas, canvas');
+    let container = null;
+    if (target && target.parentElement) container = target.parentElement;
+    if (!container) {
+      container = document.querySelector('#previewArea, .preview-area') || document.body;
+    }
+    return { target, container };
   }
 
   function getBgState() {
@@ -51,7 +46,7 @@
   }
 
   function getPatternTransform() {
-    // scalePct: 50-150, offsets X/Y in pixels (clamped loosely)
+    // scalePct: min 100, offsets X/Y in pixels
     let scalePct = 100, xPx = 0, yPx = 0;
     try {
       const ds = document.body?.dataset;
@@ -67,8 +62,8 @@
       if (sx !== null) xPx = parseFloat(sx) || xPx;
       if (sy !== null) yPx = parseFloat(sy) || yPx;
     } catch {}
-    // clamp scale; offsets will be clamped visually by background calc; set soft clamp here
-    scalePct = Math.max(50, Math.min(150, scalePct));
+    // clamp scale; offsets are unclamped here
+    scalePct = Math.max(100, Math.min(150, scalePct));
     return { scalePct, xPx, yPx };
   }
 
@@ -88,61 +83,135 @@
   }
 
   function ensureOverlay(container) {
-    let ov = container.querySelector('#patternOverlay');
+    let wrap = container.querySelector('#patternOverlayWrap');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.id = 'patternOverlayWrap';
+      wrap.style.position = 'absolute';
+      wrap.style.top = '0';
+      wrap.style.left = '0';
+      wrap.style.width = '0px';
+      wrap.style.height = '0px';
+      wrap.style.overflow = 'hidden';
+      wrap.style.zIndex = '9999';
+      const cs = getComputedStyle(container);
+      if (cs.position === 'static') container.style.position = 'relative';
+      container.appendChild(wrap);
+    }
+    let pan = wrap.querySelector('#patternOverlayPan');
+    if (!pan) {
+      pan = document.createElement('div');
+      pan.id = 'patternOverlayPan';
+      pan.style.position = 'absolute';
+      pan.style.left = '0';
+      pan.style.top = '0';
+      pan.style.width = '100%';
+      pan.style.height = '100%';
+      pan.style.transform = 'translate(0px, 0px)';
+      pan.style.willChange = 'transform';
+      pan.style.pointerEvents = 'none';
+      wrap.appendChild(pan);
+    }
+    let ov = pan.querySelector('#patternOverlay');
     if (!ov) {
       ov = document.createElement('img');
       ov.id = 'patternOverlay';
       ov.alt = '';
       ov.style.position = 'absolute';
-      ov.style.top = '0';
-      ov.style.left = '0';
+      ov.style.left = '50%';
+      ov.style.top = '50%';
+      // Fit height to preview, keep aspect (width auto)
       ov.style.height = '100%';
-      ov.style.width = '100%';
-      ov.style.objectFit = 'contain';
+      ov.style.width = 'auto';
+      ov.style.objectFit = 'unset';
       ov.style.transformOrigin = '50% 50%';
-      ov.style.transform = 'none';
+      // center the image on its own center, then scale from center
+      ov.style.transform = 'translate(-50%, -50%) scale(1)';
+      ov.style.willChange = 'transform';
       ov.style.pointerEvents = 'none';
-      ov.style.zIndex = '1000';
-      try { container.style.willChange = 'background-position, background-size'; } catch {}
-      const cs = getComputedStyle(container);
-      if (cs.position === 'static') container.style.position = 'relative';
-      if (container.style.overflow === '') container.style.overflow = 'hidden';
-      container.appendChild(ov);
+      pan.appendChild(ov);
     }
-    return ov;
+    return { wrap, pan, ov };
   }
 
-  function applyOverlayTransform(container, ov) {
-    // Use stored transform parameters (translate + scale)
+  function layoutOverlay(target, container, wrap) {
     try {
-      const tf = getPatternTransform();
-      const s = Math.max(0.01, (tf.scalePct||100)/100);
-      const x = tf.xPx||0, y = tf.yPx||0;
-      ov.style.transform = `translate(${x}px, ${y}px) scale(${s})`;
-    } catch {
-      ov.style.transform = 'none';
-    }
+      const pr = container.getBoundingClientRect();
+      const cr = target.getBoundingClientRect();
+      const left = Math.round(cr.left - pr.left);
+      const top = Math.round(cr.top - pr.top);
+      const w = Math.round(cr.width);
+      const h = Math.round(cr.height);
+      wrap.style.left = left + 'px';
+      wrap.style.top = top + 'px';
+      wrap.style.width = w + 'px';
+      wrap.style.height = h + 'px';
+    } catch {}
+  }
+
+  function applyOverlayTransform(container, pan, ov) {
+    // 画像は自然サイズ（拡縮率で拡大のみ）。プレビュー中心基準で配置。
+    const tf = getPatternTransform();
+    const s = Math.max(1, (tf.scalePct || 100) / 100);
+    const x = tf.xPx || 0;
+    const y = tf.yPx || 0;
+    // pan moves the viewport center in screen px
+    pan.style.transform = `translate(${x}px, ${y}px)`;
+    // ov centers itself on pan's (0,0) and scales from center
+    ov.style.transform = `translate(-50%, -50%) scale(${s})`;
   }
 
   function applyComposite(patternSrc) {
-    const container = getPreviewContainer();
+    const { target, container } = getPreviewRefs();
     // Pattern is rendered as an overlay image above the preview.
-    const ov = ensureOverlay(container);
+    const { wrap, pan, ov } = ensureOverlay(container);
+    // If an overlay was mistakenly appended under the canvas in older runs, remove it
+    try { const wrong = (target && target.querySelector) ? target.querySelector('#patternOverlay') : null; if (wrong && wrong !== ov) wrong.remove(); } catch {}
+    // Always align wrap to the preview target size
+    layoutOverlay(target, container, wrap);
     if (patternSrc) {
       if (ov.dataset.src !== patternSrc) {
         ov.style.display = 'none';
-        ov.onload = () => { ov.style.display = ''; applyOverlayTransform(container, ov); };
+        ov.onload = () => {
+          try { ov.style.width = 'auto'; ov.style.height = '100%'; } catch {}
+          ov.style.display = '';
+          layoutOverlay(target, container, wrap);
+          applyOverlayTransform(container, pan, ov);
+        };
         ov.src = patternSrc;
         ov.dataset.src = patternSrc;
       }
+      // Remove any stray overlays outside our managed wrap to avoid duplicates
+      try {
+        document.querySelectorAll('#patternOverlay').forEach((el) => {
+          if (el !== ov && el.ownerDocument === document) {
+            try { el.remove(); } catch {}
+          }
+        });
+      } catch {}
       ov.style.display = '';
-      applyOverlayTransform(container, ov);
+      layoutOverlay(target, container, wrap);
+      applyOverlayTransform(container, pan, ov);
     } else {
       ov.style.display = 'none';
       ov.removeAttribute('src');
       delete ov.dataset.src;
     }
     // Do not touch container background here. bgSettings.js manages background state.
+    // Keep overlay aligned on resize
+    if (!container.__overlayResizeBound) {
+      container.__overlayResizeBound = true;
+      const realign = () => { try { const { target } = getPreviewRefs(); layoutOverlay(target, container, wrap); applyOverlayTransform(container, pan, ov); } catch {} };
+      window.addEventListener('resize', realign);
+      try {
+        const t = document.getElementById('preview');
+        if (t && 'ResizeObserver' in window) {
+          const ro = new ResizeObserver(realign);
+          ro.observe(t);
+          container.__overlayRO = ro;
+        }
+      } catch {}
+    }
   }
 
   function insertPatternButton() {

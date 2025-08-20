@@ -7,7 +7,13 @@
         if (el) return el;
       }
     } catch {}
-    let el = document.querySelector('#preview, #previewArea, .preview, [data-role="preview"]');
+    let el = document.querySelector('#preview');
+    if (el) {
+      const tag = (el.tagName || '').toLowerCase();
+      if (tag === 'canvas' && el.parentElement) return el.parentElement;
+      return el;
+    }
+    el = document.querySelector('#previewArea, .preview-area');
     if (el) return el;
     const img = document.querySelector('#previewImage, .preview img');
     if (img && img.parentElement) return img.parentElement;
