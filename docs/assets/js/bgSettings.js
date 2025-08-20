@@ -160,7 +160,7 @@
   }
 
   function applyBackground(value, imgSrc) {
-    // Preferred: set preview/container/canvas background style directly
+    // Preferred: set preview/canvas background style directly
     const preview = getPreviewElement();
     if (preview) {
       const isImg = preview.tagName && preview.tagName.toLowerCase() === 'img';
@@ -189,7 +189,7 @@
           if (!isFinite(offY)) offY = parseFloat(localStorage.getItem('patternOffsetY')) || offY;
         } catch {}
 
-        // Pattern layer is now rendered as an overlay <img>, so we do not include it in background layers
+        // Base background image (no pattern here)
         if (bgImageSrc) {
           layers.push(`url('${bgImageSrc}')`);
           repeats.push('no-repeat');
@@ -201,6 +201,15 @@
         preview.style.backgroundPosition = positions.join(', ');
         preview.style.backgroundSize = sizes.join(', ');
         preview.style.backgroundColor = bgColor;
+
+        // Save as base so patternSettings can stack pattern above it
+        try {
+          preview.dataset.bgBaseImage = preview.style.backgroundImage || '';
+          preview.dataset.bgBaseRepeat = preview.style.backgroundRepeat || '';
+          preview.dataset.bgBasePosition = preview.style.backgroundPosition || '';
+          preview.dataset.bgBaseSize = preview.style.backgroundSize || '';
+          preview.dataset.bgBaseColor = bgColor || '';
+        } catch {}
       };
 
       if (value === 'none') {
@@ -211,21 +220,11 @@
           preview.style.width = 'auto';
           preview.style.height = '100%';
         }
-        // apply only pattern layer over transparent background
-        const layers = [];
-        const repeats = [];
-        const positions = [];
-        const sizes = [];
-        if (patternSrc) {
-          layers.push(`url('${patternSrc}')`);
-          repeats.push('no-repeat');
-          positions.push('center');
-          sizes.push('auto 100%');
-        }
-        preview.style.backgroundImage = layers.join(', ');
-        preview.style.backgroundRepeat = repeats.join(', ');
-        preview.style.backgroundPosition = positions.join(', ');
-        preview.style.backgroundSize = sizes.join(', ');
+        // transparent base; no image
+        preview.style.backgroundImage = '';
+        preview.style.backgroundRepeat = '';
+        preview.style.backgroundPosition = '';
+        preview.style.backgroundSize = '';
         preview.style.backgroundColor = 'transparent';
         rememberBackground('none');
       } else if (value === 'white' || value === 'black') {
