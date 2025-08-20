@@ -123,6 +123,7 @@
       // Fit height to preview, keep aspect (width auto)
       ov.style.height = '100%';
       ov.style.width = 'auto';
+      ov.style.maxWidth = 'none';
       ov.style.objectFit = 'unset';
       ov.style.transformOrigin = '50% 50%';
       // center the image on its own center, then scale from center
@@ -176,7 +177,7 @@
           try {
             ov.style.width = 'auto';
             ov.style.height = '100%';
-            // Explicitly lock the aspect ratio to the natural image ratio
+            ov.style.maxWidth = 'none';
             if (ov.naturalWidth && ov.naturalHeight) {
               ov.style.aspectRatio = `${ov.naturalWidth} / ${ov.naturalHeight}`;
             }

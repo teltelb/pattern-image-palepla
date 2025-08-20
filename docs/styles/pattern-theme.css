@@ -44,6 +44,8 @@ body {
               var(--bg);
 }
 img, canvas, svg, video { display: block; max-width: 100%; height: auto; }
+/* Ensure overlay image keeps correct ratio when we drive height explicitly */
+#patternOverlay { max-width: none !important; height: 100% !important; width: auto !important; object-fit: unset !important; }
 /* Top bar */
 .topbar { position: sticky; top: 0; z-index: 100; padding: 10px 24px; background: linear-gradient(180deg, rgba(0,0,0,.28), rgba(0,0,0,.12)); border-bottom: 1px solid rgba(255,255,255,.08); backdrop-filter: saturate(160%) blur(8px); }
 .topbar-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: center; gap: 16px; position: relative; }
