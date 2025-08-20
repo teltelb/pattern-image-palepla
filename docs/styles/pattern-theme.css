@@ -93,7 +93,7 @@ input:focus, select:focus { box-shadow: var(--shadow-2), var(--focus); }
 /* Canvas area background (preview only) */
 canvas.preview.bg-white { background: #ffffff; }
 canvas.preview.bg-black { background: #000000; }
-canvas.preview { max-width: 100%; height: auto; display: block; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.35); position: relative; z-index: 2; }
+canvas.preview { max-width: 100%; height: auto; display: block; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
 /* Header */
 .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--gap-lg); }
 .brand { font-weight: 800; letter-spacing: .02em; }
