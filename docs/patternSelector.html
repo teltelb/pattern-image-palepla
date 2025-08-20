@@ -60,8 +60,18 @@
       .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
       .item { border: 2px solid #ddd; border-radius: 8px; overflow: hidden; cursor: pointer; position: relative; background: #f6f7f8; }
       .item.selected { border-color: #0078d4; box-shadow: 0 0 0 2px rgba(0,120,212,.2) inset; }
-      .item img { display: none; }
-      .item canvas.thumb { width: 100%; height: 90px; display: block; background: #000; }
+      /* 参考画像として一部だけをさらに拡大表示（画像は非表示にしない） */
+      .item img.thumb-img {
+        width: 100%;
+        height: 90px;
+        object-fit: cover;
+        display: block;
+        background: #000;
+        /* ズーム倍率は必要に応じて調整 */
+        transform: scale(3.5);
+        transform-origin: center center;
+      }
+      .item canvas.thumb { display: none; width: 100%; height: 90px; background: #000; }
       .item .name { font-size: 12px; padding: 6px 8px; border-top: 1px solid #eee; background: #fafafa; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .controls { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
       .hint { font-size: 12px; color: #555; }
@@ -81,11 +91,11 @@
         let selected = null;
 
         function displayNameFromSrc(src) {
+          // 項目名はファイル名のみ（拡張子付き）
           try {
-            const base = src.split('/').pop() || src;
-            const noExt = base.replace(/\.[a-z0-9]+$/i, '');
-            const m = noExt.match(/(PT[_-]?\d+)/i) || noExt.match(/(PAT[_-]?\d+)/i);
-            return m ? m[1].toUpperCase() : noExt;
+            const clean = (src || '').split('?')[0].split('#')[0];
+            const base = clean.split('/').pop() || clean;
+            return base;
           } catch { return src; }
         }
 
@@ -173,12 +183,22 @@
           const sk = document.createElement('div'); sk.className = 'skeleton';
           const cvs = document.createElement('canvas');
           cvs.className = 'thumb';
-          cvs.width = 240; cvs.height = 90; // 初期サイズ（後で実サイズに合わせて再描画）
+          cvs.width = 240; cvs.height = 90;
+          const img = document.createElement('img');
+          img.className = 'thumb-img';
+          img.setAttribute('loading', 'lazy');
+          img.setAttribute('decoding', 'async');
+          img.setAttribute('fetchpriority', 'low');
+          img.dataset.src = toThumb(src);
+          img.dataset.full = src;
+          img.onerror = () => { if (img.dataset.triedFull !== '1') { img.dataset.triedFull = '1'; img.src = img.dataset.full; } };
+          img.onload = () => { try { sk.remove(); } catch {} };
           const name = document.createElement('div');
           name.className = 'name';
           name.textContent = displayNameFromSrc(src);
           div.appendChild(sk);
           div.appendChild(cvs);
+          div.appendChild(img);
           div.appendChild(name);
           div.addEventListener('click', () => { selected = src; markSelected(src); update(); });
           return div;
@@ -193,13 +213,16 @@
             if (!entry.isIntersecting) return;
             const item = entry.target;
             const cvs = item.querySelector('canvas.thumb');
+            const img = item.querySelector('img.thumb-img');
             const urlThumb = toThumb(item.title);
-            renderCroppedThumb(urlThumb, cvs, () => {
-              // 失敗したときはフルパスで再試行
-              const isBlank = (cvs.width === 0 || cvs.height === 0);
-              if (isBlank) renderCroppedThumb(item.title, cvs, () => {});
-              const sk = item.querySelector('.skeleton'); if (sk) sk.remove();
-            });
+            // 画像の遅延読み込み（フォールバック表示）
+            if (img && !img.src) img.src = urlThumb;
+            // キャンバス拡大サムネ（現在は非表示。必要ならCSSで有効化）
+            if (cvs) {
+              renderCroppedThumb(urlThumb, cvs, () => {
+                const sk = item.querySelector('.skeleton'); if (sk) sk.remove();
+              });
+            }
             io.unobserve(item);
           });
         }, { root: null, rootMargin: '200px', threshold: 0.01 });
