@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>パターン設定</title>
+    <link rel="stylesheet" href="styles/pattern-theme.css" />
+    <script>
+      (function copyParentStyles(){
+        function cloneStyles(){
+          try {
+            if (!window.opener || !window.opener.document) return;
+            try {
+              document.documentElement.className = window.opener.document.documentElement.className || '';
+              if (document.body) document.body.className = window.opener.document.body.className || '';
+            } catch {}
+            const head = document.head;
+            const links = window.opener.document.querySelectorAll('link[rel="stylesheet"], style');
+            links.forEach(node => {
+              try {
+                if (node.tagName === 'LINK') {
+                  const href = node.getAttribute('href');
+                  if (!href) return;
+                  const link = document.createElement('link');
+                  link.rel = 'stylesheet';
+                  link.href = href;
+                  head.appendChild(link);
+                } else if (node.tagName === 'STYLE') {
+                  const style = document.createElement('style');
+                  style.textContent = node.textContent;
+                  head.appendChild(style);
+                }
+              } catch {}
+            });
+          } catch {}
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', cloneStyles);
+        } else {
+          cloneStyles();
+        }
+      })();
+    </script>
+    <script id="patternManifest" type="application/json">[
+      "assets/images/patterns/PT_01.png",
+      "assets/images/patterns/PT_02.png",
+      "assets/images/patterns/PT_03.png",
+      "assets/images/patterns/PT_04.png",
+      "assets/images/patterns/PT_05.png",
+      "assets/images/patterns/PT_06.png",
+      "assets/images/patterns/PT_07.png",
+      "assets/images/patterns/PT_08.png",
+      "assets/images/patterns/PT_09.png",
+      "assets/images/patterns/PT_010.png"
+    ]</script>
+    <style>
+      body { margin: 16px; }
+      .container { max-width: 760px; margin: 0 auto; }
+      h1 { font-size: 18px; margin: 0 0 12px; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+      .item { border: 2px solid #ddd; border-radius: 8px; overflow: hidden; cursor: pointer; position: relative; background: #f6f7f8; }
+      .item.selected { border-color: #0078d4; box-shadow: 0 0 0 2px rgba(0,120,212,.2) inset; }
+      .item img { width: 100%; height: 90px; object-fit: contain; display: block; background: #000; }
+      .item .name { font-size: 12px; padding: 6px 8px; border-top: 1px solid #eee; background: #fafafa; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .controls { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+      .hint { font-size: 12px; color: #555; }
+      .skeleton { width: 100%; height: 90px; background: linear-gradient(90deg, #f6f7f8 0%, #edeef1 50%, #f6f7f8 100%); background-size: 200% 100%; animation: shimmer 1.2s infinite; }
+      @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>パターン設定</h1>
+      <div class="grid" id="patternGrid"></div>
+    </div>
+
+    <script>
+      (function(){
+        const grid = document.getElementById('patternGrid');
+        let selected = null;
+
+        function displayNameFromSrc(src) {
+          try {
+            const base = src.split('/').pop() || src;
+            const noExt = base.replace(/\.[a-z0-9]+$/i, '');
+            const m = noExt.match(/(PT[_-]?\d+)/i) || noExt.match(/(PAT[_-]?\d+)/i);
+            return m ? m[1].toUpperCase() : noExt;
+          } catch { return src; }
+        }
+
+        function toThumb(src) {
+          try {
+            const parts = src.split('/');
+            const file = parts.pop();
+            const idx = parts.lastIndexOf('patterns');
+            if (idx >= 0) {
+              parts.splice(idx + 1, 0, 'thumbs');
+              return parts.join('/') + '/' + file;
+            }
+          } catch {}
+          return src;
+        }
+
+        function createNoneItem() {
+          const div = document.createElement('div');
+          div.className = 'item';
+          div.title = '';
+          const sk = document.createElement('div'); sk.className = 'skeleton';
+          sk.style.display = 'flex'; sk.style.alignItems = 'center'; sk.style.justifyContent = 'center'; sk.style.color = '#fff'; sk.style.fontSize = '14px'; sk.style.background = '#000';
+          sk.textContent = '未設定';
+          const name = document.createElement('div'); name.className = 'name'; name.textContent = '未設定';
+          div.appendChild(sk); div.appendChild(name);
+          div.addEventListener('dblclick', () => {
+            const payload = { type: 'patternSettingApply', src: null };
+            try { window.opener && window.opener.postMessage(payload, '*'); } catch {}
+            window.close();
+          });
+          return div;
+        }
+
+        function createItem(src) {
+          const div = document.createElement('div');
+          div.className = 'item';
+          div.title = src;
+          const sk = document.createElement('div'); sk.className = 'skeleton';
+          const img = document.createElement('img');
+          img.setAttribute('loading', 'lazy');
+          img.setAttribute('decoding', 'async');
+          img.setAttribute('fetchpriority', 'low');
+          img.dataset.src = toThumb(src);
+          img.dataset.full = src;
+          img.onerror = () => { if (img.dataset.triedFull !== '1') { img.dataset.triedFull = '1'; img.src = img.dataset.full; } };
+          img.onload = () => { sk.remove(); };
+          const name = document.createElement('div');
+          name.className = 'name';
+          name.textContent = displayNameFromSrc(src);
+          div.appendChild(sk);
+          div.appendChild(img);
+          div.appendChild(name);
+          div.addEventListener('click', () => { selected = src; markSelected(src); update(); });
+          return div;
+        }
+
+        function markSelected(src) {
+          grid.querySelectorAll('.item').forEach(el => el.classList.toggle('selected', el.title === src));
+        }
+
+        const io = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              const img = entry.target.querySelector('img');
+              if (img && !img.src) img.src = img.dataset.src || img.dataset.full;
+              io.unobserve(entry.target);
+            }
+          });
+        }, { root: null, rootMargin: '200px', threshold: 0.01 });
+
+        async function loadManifest() {
+          try {
+            if (location.protocol === 'http:' || location.protocol === 'https:') {
+              const res = await fetch('assets/images/patterns/manifest.json', { cache: 'no-cache' });
+              if (res.ok) {
+                const arr = await res.json();
+                if (Array.isArray(arr)) return arr;
+              }
+            }
+          } catch {}
+          try {
+            const el = document.getElementById('patternManifest');
+            if (el && el.textContent) {
+              const arr = JSON.parse(el.textContent);
+              if (Array.isArray(arr)) return arr;
+            }
+          } catch {}
+          return [];
+        }
+
+        (async function init(){
+          const list = await loadManifest();
+          if (!list.length) {
+            const hint = document.createElement('div');
+            hint.className = 'hint';
+            hint.textContent = 'assets/images/patterns/manifest.json またはこのページ内の patternManifest に画像パスを指定してください。';
+            grid.parentNode.insertBefore(hint, grid);
+          } else {
+            // Add "未設定" first
+            const noneItem = createNoneItem();
+            grid.appendChild(noneItem);
+            list.forEach(src => { const item = createItem(src); grid.appendChild(item); io.observe(item); });
+          }
+
+          // Preselect
+          try {
+            const sp = new URLSearchParams(location.search);
+            const img = sp.get('img');
+            if (img) { selected = img; markSelected(img); }
+          } catch {}
+
+          update();
+        })();
+
+        function update(){}
+        // Double-click to apply
+        grid.addEventListener('dblclick', (e) => {
+          const item = e.target.closest('.item');
+          if (!item) return;
+          const payload = { type: 'patternSettingApply', src: item.title };
+          try { window.opener && window.opener.postMessage(payload, '*'); } catch {}
+          window.close();
+        });
+      })();
+    </script>
+  </body>
+  </html>

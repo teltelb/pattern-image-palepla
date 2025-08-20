@@ -60,7 +60,8 @@
       .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
       .item { border: 2px solid #ddd; border-radius: 8px; overflow: hidden; cursor: pointer; position: relative; background: #f6f7f8; }
       .item.selected { border-color: #0078d4; box-shadow: 0 0 0 2px rgba(0,120,212,.2) inset; }
-      .item img { width: 100%; height: 90px; object-fit: contain; display: block; background: #000; }
+      .item img { display: none; }
+      .item canvas.thumb { width: 100%; height: 90px; display: block; background: #000; }
       .item .name { font-size: 12px; padding: 6px 8px; border-top: 1px solid #eee; background: #fafafa; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .controls { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
       .hint { font-size: 12px; color: #555; }
@@ -118,24 +119,66 @@
           return div;
         }
 
+        const THUMB_ZOOM = 2.0; // 拡大率（中心をトリミング表示）
+
+        function renderCroppedThumb(url, canvas, ondone){
+          const img = new Image();
+          img.onload = () => {
+            try {
+              const dpr = window.devicePixelRatio || 1;
+              const cw = canvas.clientWidth || 180;
+              const ch = canvas.clientHeight || 90;
+              canvas.width = Math.max(1, Math.round(cw * dpr));
+              canvas.height = Math.max(1, Math.round(ch * dpr));
+              const ctx = canvas.getContext('2d');
+              ctx.imageSmoothingEnabled = true;
+              ctx.imageSmoothingQuality = 'high';
+              const iw = img.naturalWidth || img.width;
+              const ih = img.naturalHeight || img.height;
+              // 中心を基準にズーム分だけ切り出し
+              const zw = Math.max(1, Math.round(iw / THUMB_ZOOM));
+              const zh = Math.max(1, Math.round(ih / THUMB_ZOOM));
+              const sx = Math.max(0, Math.round((iw - zw) / 2));
+              const sy = Math.max(0, Math.round((ih - zh) / 2));
+              // キャンバスいっぱいに描画（アスペクトはキャンバス側固定）
+              ctx.fillStyle = '#000';
+              ctx.fillRect(0,0,canvas.width, canvas.height);
+              // キャンバス比率に合わせてcover描画
+              const rCanvas = canvas.width / canvas.height;
+              const rCrop = zw / zh;
+              let dx=0, dy=0, dw=canvas.width, dh=canvas.height;
+              if (rCrop > rCanvas) {
+                // 幅広 → 高さ基準
+                const scaledW = Math.round(zh * rCanvas);
+                const sx2 = sx + Math.max(0, Math.round((zw - scaledW) / 2));
+                ctx.drawImage(img, sx2, sy, scaledW, zh, 0, 0, dw, dh);
+              } else {
+                // 縦長 → 幅基準
+                const scaledH = Math.round(zw / rCanvas);
+                const sy2 = sy + Math.max(0, Math.round((zh - scaledH) / 2));
+                ctx.drawImage(img, sx, sy2, zw, scaledH, 0, 0, dw, dh);
+              }
+            } finally {
+              if (typeof ondone === 'function') ondone();
+            }
+          };
+          img.onerror = () => { if (typeof ondone === 'function') ondone(); };
+          img.src = url;
+        }
+
         function createItem(src) {
           const div = document.createElement('div');
           div.className = 'item';
           div.title = src;
           const sk = document.createElement('div'); sk.className = 'skeleton';
-          const img = document.createElement('img');
-          img.setAttribute('loading', 'lazy');
-          img.setAttribute('decoding', 'async');
-          img.setAttribute('fetchpriority', 'low');
-          img.dataset.src = toThumb(src);
-          img.dataset.full = src;
-          img.onerror = () => { if (img.dataset.triedFull !== '1') { img.dataset.triedFull = '1'; img.src = img.dataset.full; } };
-          img.onload = () => { sk.remove(); };
+          const cvs = document.createElement('canvas');
+          cvs.className = 'thumb';
+          cvs.width = 240; cvs.height = 90; // 初期サイズ（後で実サイズに合わせて再描画）
           const name = document.createElement('div');
           name.className = 'name';
           name.textContent = displayNameFromSrc(src);
           div.appendChild(sk);
-          div.appendChild(img);
+          div.appendChild(cvs);
           div.appendChild(name);
           div.addEventListener('click', () => { selected = src; markSelected(src); update(); });
           return div;
@@ -147,11 +190,17 @@
 
         const io = new IntersectionObserver((entries) => {
           entries.forEach(entry => {
-            if (entry.isIntersecting) {
-              const img = entry.target.querySelector('img');
-              if (img && !img.src) img.src = img.dataset.src || img.dataset.full;
-              io.unobserve(entry.target);
-            }
+            if (!entry.isIntersecting) return;
+            const item = entry.target;
+            const cvs = item.querySelector('canvas.thumb');
+            const urlThumb = toThumb(item.title);
+            renderCroppedThumb(urlThumb, cvs, () => {
+              // 失敗したときはフルパスで再試行
+              const isBlank = (cvs.width === 0 || cvs.height === 0);
+              if (isBlank) renderCroppedThumb(item.title, cvs, () => {});
+              const sk = item.querySelector('.skeleton'); if (sk) sk.remove();
+            });
+            io.unobserve(item);
           });
         }, { root: null, rootMargin: '200px', threshold: 0.01 });
 

@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>背景設定</title>
+    <link rel="stylesheet" href="./styles/pattern-theme.css" />
+    <script id="bgManifest" type="application/json">
+      [
+        "assets/images/background/BG_01_SNOW WHITE.png",
+        "assets/images/background/BG_02_ECRU.png",
+        "assets/images/background/BG_03_SAKURA.png",
+        "assets/images/background/BG_04_CORAL.png",
+        "assets/images/background/BG_05_CAMERIA.png",
+        "assets/images/background/BG_06_CHERRY.png",
+        "assets/images/background/BG_07_APRICOT.png",
+        "assets/images/background/BG_08_ORANGE.png",
+        "assets/images/background/BG_09_LEMON SHIFFON.png",
+        "assets/images/background/BG_10_CANARIA.png",
+        "assets/images/background/BG_11_COCOA.png",
+        "assets/images/background/BG_12_LATTE.png",
+        "assets/images/background/BG_13_PISTACHIO.png",
+        "assets/images/background/BG_14_LEAF.png",
+        "assets/images/background/BG_15_OLIVE.png",
+        "assets/images/background/BG_16_HYACINTH.png",
+        "assets/images/background/BG_17_SKY.png",
+        "assets/images/background/BG_18_CERULEAN.png",
+        "assets/images/background/BG_19_LAPIS LAZULI.png",
+        "assets/images/background/BG_20_LILAC.png",
+        "assets/images/background/BG_21_AMETHYST.png",
+        "assets/images/background/BG_22_PEONY.png",
+        "assets/images/background/BG_23_SILVER.png",
+        "assets/images/background/BG_24_BLACK.png",
+        "assets/images/background/BG_25_CARMINE.png",
+        "assets/images/background/BG_26_MAROON.png",
+        "assets/images/background/BG_27_BRICK.png",
+        "assets/images/background/BG_28_NAVY.png",
+        "assets/images/background/BG_29_BOTTLE GREEN.png",
+        "assets/images/background/BG_30_CHOCOLATE.png",
+        "assets/images/background/BG_31_MAUVE.png",
+        "assets/images/background/BG_32_PAPRICA.png",
+        "assets/images/background/BG_33_MILK.png",
+        "assets/images/background/BG_34_PEACH.png",
+        "assets/images/background/BG_35_NIGHT FADE.png",
+        "assets/images/background/BG_36_BEACH.png",
+        "assets/images/background/BG_37_SUNSET.png",
+        "assets/images/background/BG_38_NIGHT WAVE.png",
+        "assets/images/background/BG_39_WIND.png",
+        "assets/images/background/BG_40_MOON.png",
+        "assets/images/background/BG_41_LEMON GATE.png",
+        "assets/images/background/BG_42_WHALE.png",
+        "assets/images/background/BG_43_COOL.png",
+        "assets/images/background/BG_44_DARK CHERRY.png",
+        "assets/images/background/BG_45_LAGOON.png",
+        "assets/images/background/BG_46_FROZEN BERRY.png",
+        "assets/images/background/BG_47_FLAME.png",
+        "assets/images/background/BG_48_SUNRIZE.png"
+      ]
+    </script>
+    <script>
+      (function copyParentStyles(){
+        function cloneStyles(){
+          try {
+            if (!window.opener || !window.opener.document) return;
+            try {
+              document.documentElement.className = window.opener.document.documentElement.className || '';
+              if (document.body) document.body.className = window.opener.document.body.className || '';
+            } catch {}
+            const head = document.head;
+            const links = window.opener.document.querySelectorAll('link[rel="stylesheet"], style');
+            links.forEach(node => {
+              try {
+                if (node.tagName === 'LINK') {
+                  const href = node.getAttribute('href');
+                  if (!href) return;
+                  const link = document.createElement('link');
+                  link.rel = 'stylesheet';
+                  link.href = href;
+                  head.appendChild(link);
+                } else if (node.tagName === 'STYLE') {
+                  const style = document.createElement('style');
+                  style.textContent = node.textContent;
+                  head.appendChild(style);
+                }
+              } catch {}
+            });
+          } catch {}
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', cloneStyles);
+        } else {
+          cloneStyles();
+        }
+      })();
+    </script>
+    <style>
+      body { margin: 16px; }
+      .container { max-width: 760px; margin: 0 auto; }
+      h1 { font-size: 18px; margin: 0 0 12px; }
+      .row { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+      .swatch { width: 28px; height: 28px; border-radius: 4px; border: 1px solid #ccc; }
+      .controls { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+      .item { border: 2px solid #ddd; border-radius: 8px; overflow: hidden; cursor: pointer; position: relative; background: #f6f7f8; }
+      .item.selected { border-color: #0078d4; box-shadow: 0 0 0 2px rgba(0,120,212,.2) inset; }
+      .item img { width: 100%; height: 90px; object-fit: contain; display: block; background: #fff; }
+      .item .name { font-size: 12px; padding: 6px 8px; border-top: 1px solid #eee; background: #fafafa; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .skeleton { width: 100%; height: 90px; background: linear-gradient(90deg, #f6f7f8 0%, #edeef1 50%, #f6f7f8 100%); background-size: 200% 100%; animation: shimmer 1.2s infinite; }
+      @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+      .hint { font-size: 12px; color: #555; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>背景設定</h1>
+
+      <div class="row">
+        <label><input type="radio" name="bg" value="white"> a.白</label>
+        <div class="swatch" style="background:#fff;"></div>
+      </div>
+      <div class="row">
+        <label><input type="radio" name="bg" value="black"> b.黒</label>
+        <div class="swatch" style="background:#000;"></div>
+      </div>
+
+      <div class="row" style="margin-top:16px;">
+        <div class="hint">画像を選択</div>
+      </div>
+      <div id="bgGrid" class="grid"></div>
+
+      <!-- ダブルクリックで適用。キャンセルはウインドウの×で閉じる想定 -->
+    </div>
+
+    <script>
+      (function(){
+        const radios = document.querySelectorAll('input[name="bg"]');
+        const grid = document.getElementById('bgGrid');
+
+        const state = { kind: 'color', value: null, img: null };
+
+        function markSelected(src) {
+          grid.querySelectorAll('.item').forEach(el => el.classList.toggle('selected', el.title === src));
+        }
+
+        function selectImage(src) {
+          state.kind = 'image';
+          state.img = src;
+          state.value = null;
+          Array.from(radios).forEach(r => r.checked = false);
+          markSelected(src);
+          update();
+        }
+
+        function getSelected(){
+          if (state.kind === 'image' && state.img) return { type: 'image', src: state.img };
+          const r = Array.from(radios).find(x => x.checked);
+          return r ? { type: 'color', value: r.value } : null;
+        }
+
+        function update(){}
+
+        radios.forEach(r => r.addEventListener('change', (ev) => {
+          const t = ev.currentTarget;
+          state.kind = 'color';
+          state.value = t.value;
+          state.img = null;
+          markSelected('');
+          update();
+        }));
+
+        // no apply/cancel buttons
+
+        async function loadManifest() {
+          // Try HTTP(S) fetch first. On file://, fetch will fail due to CORS; fallback to inline JSON.
+          try {
+            if (location.protocol === 'http:' || location.protocol === 'https:') {
+              const res = await fetch('assets/images/background/manifest.json', { cache: 'no-cache' });
+              if (res.ok) {
+                const arr = await res.json();
+                if (Array.isArray(arr)) return arr;
+              }
+            }
+          } catch {}
+          try {
+            const el = document.getElementById('bgManifest');
+            if (el && el.textContent) {
+              const arr = JSON.parse(el.textContent);
+              return Array.isArray(arr) ? arr : [];
+            }
+          } catch {}
+          return [];
+        }
+
+        function displayNameFromSrc(src) {
+          try {
+            const base = src.split('/').pop() || src;
+            const noExt = base.replace(/\.[a-z0-9]+$/i, '');
+            const m = noExt.match(/(BG[_-]?\d+)/i);
+            return m ? m[1].toUpperCase() : noExt;
+          } catch { return src; }
+        }
+
+        function toThumb(src) {
+          try {
+            // Prefer assets/images/background/thumbs/<file>
+            const parts = src.split('/');
+            const file = parts.pop();
+            if (!parts.length || !file) return src;
+            const idx = parts.lastIndexOf('background');
+            if (idx >= 0) {
+              parts.splice(idx + 1, 0, 'thumbs');
+              return parts.join('/') + '/' + file;
+            }
+            return src;
+          } catch { return src; }
+        }
+
+        function createNoneItem() {
+          const div = document.createElement('div');
+          div.className = 'item';
+          div.title = '';
+          const box = document.createElement('div');
+          box.className = 'skeleton';
+          box.style.display = 'flex';
+          box.style.alignItems = 'center';
+          box.style.justifyContent = 'center';
+          box.style.color = '#333';
+          box.style.fontSize = '14px';
+          box.style.background = '#fafafa';
+          box.textContent = '未設定';
+          const name = document.createElement('div');
+          name.className = 'name';
+          name.textContent = '未設定';
+          div.appendChild(box);
+          div.appendChild(name);
+          div.addEventListener('dblclick', () => applyNow({ type: 'none' }));
+          return div;
+        }
+
+        function createItem(src) {
+          const div = document.createElement('div');
+          div.className = 'item';
+          div.title = src;
+          const skeleton = document.createElement('div');
+          skeleton.className = 'skeleton';
+          const img = document.createElement('img');
+          img.setAttribute('loading', 'lazy');
+          img.setAttribute('decoding', 'async');
+          img.setAttribute('fetchpriority', 'low');
+          img.width = 240; // hint for layout
+          img.height = 180;
+          const thumb = toThumb(src);
+          // Defer setting src until in view; use thumb first, fallback to full on error
+          img.dataset.src = thumb;
+          img.dataset.full = src;
+          img.onerror = () => {
+            // If thumb failed, try full-size once
+            if (img.dataset.triedFull !== '1') {
+              img.dataset.triedFull = '1';
+              img.src = img.dataset.full;
+            }
+          };
+          img.onload = () => { skeleton.remove(); };
+          const name = document.createElement('div');
+          name.className = 'name';
+          name.textContent = displayNameFromSrc(src);
+          div.appendChild(skeleton);
+          div.appendChild(img);
+          div.appendChild(name);
+          div.addEventListener('click', () => selectImage(src));
+          return div;
+        }
+
+        // Lazy-load images when they enter the viewport
+        const io = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              const img = entry.target.querySelector('img');
+              if (img && !img.src) {
+                img.src = img.dataset.src || img.dataset.full;
+              }
+              io.unobserve(entry.target);
+            }
+          });
+        }, { root: null, rootMargin: '200px', threshold: 0.01 });
+
+        (async function initGrid(){
+          const list = await loadManifest();
+          grid.innerHTML = '';
+          // Add "未設定" at the beginning
+          const noneItem = createNoneItem();
+          grid.appendChild(noneItem);
+          if (!list.length) {
+            const hint = document.createElement('div');
+            hint.className = 'hint';
+            hint.textContent = 'assets/images/background/manifest.json に画像パスを配列で指定してください。';
+            grid.parentNode.insertBefore(hint, grid);
+            return;
+          }
+          list.forEach(src => {
+            const item = createItem(src);
+            grid.appendChild(item);
+            io.observe(item);
+          });
+        })();
+
+        function applyNow(sel){
+          if (!sel) return;
+          let payload = { type: 'bgSettingApply', value: 'white' };
+          if (sel.type === 'color') payload = { type: 'bgSettingApply', value: sel.value };
+          else if (sel.type === 'image') payload = { type: 'bgSettingApply', value: 'image', src: sel.src };
+          else if (sel.type === 'none') payload = { type: 'bgSettingApply', value: 'none' };
+          try { window.opener && window.opener.postMessage(payload, '*'); } catch {}
+          window.close();
+        }
+
+        // Preselect from query ?img=... or ?bg=white|black
+        try {
+          const sp = new URLSearchParams(location.search);
+          const img = sp.get('img');
+          if (img) selectImage(img);
+          const bg = sp.get('bg');
+          if (bg) {
+            const target = document.querySelector('input[name="bg"][value="' + bg + '"]');
+            if (target) { target.checked = true; state.kind='color'; state.value=bg; state.img=null; update(); }
+          }
+        } catch {}
+
+        // Double-click to apply (radios and grid items)
+        Array.from(radios).forEach(r => {
+          const label = r.closest('label') || r;
+          label.addEventListener('dblclick', () => applyNow({ type:'color', value: r.value }));
+        });
+        grid.addEventListener('dblclick', (e) => {
+          const item = e.target.closest('.item');
+          if (!item) return;
+          applyNow({ type:'image', src: item.title });
+        });
+      })();
+    </script>
+  </body>
+  </html>

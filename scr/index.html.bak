@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="ja" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>画像パターン生成ツール (GPT5)</title>
+    <link rel="stylesheet" href="./styles/pattern-theme.css" />
+    <link rel="icon" href="data:;base64,=" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">画像パターン生成ツール</div>
+        <div class="actions">
+          <button class="btn btn-ghost" id="themeToggle" title="ライト/ダーク切替">ライト/ダーク</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="app">
+      <aside class="sidebar">
+        <div class="section">
+          <h2>画像入力（最大4枚）</h2>
+          <div class="grid-2" style="margin-bottom:8px">
+            <div class="field">
+              <label for="globalScaleSlider">一括スケール</label>
+              <input id="globalScaleSlider" class="slider" type="range" min="1" max="100" value="80" />
+            </div>
+            <div class="field">
+              <label for="globalScaleNum">一括スケール値</label>
+              <input id="globalScaleNum" class="num" type="number" min="1" max="100" value="80" />
+            </div>
+          </div>
+          <div id="inputList" class="input-list" aria-label="画像をドラッグ＆ドロップまたは選択">
+            <div class="input-row" data-index="0">
+              <div class="slot" data-index="0">
+                <button type="button" class="slot-del btn btn-ghost" data-index="0" title="削除" style="position:absolute;top:6px;right:6px;z-index:2;">×</button>
+                <span class="hint">A</span><img hidden />
+              </div>
+              <div class="ctrls">
+                <label>スケール</label>
+                <input class="slider scale-slider" data-index="0" type="range" min="1" max="100" value="80" />
+                <input class="num scale-num" data-index="0" type="number" min="1" max="100" value="80" />
+              </div>
+            </div>
+            <div class="input-row" data-index="1">
+              <div class="slot" data-index="1">
+                <button type="button" class="slot-del btn btn-ghost" data-index="1" title="削除" style="position:absolute;top:6px;right:6px;z-index:2;">×</button>
+                <span class="hint">B</span><img hidden />
+              </div>
+              <div class="ctrls">
+                <label>スケール</label>
+                <input class="slider scale-slider" data-index="1" type="range" min="1" max="100" value="80" />
+                <input class="num scale-num" data-index="1" type="number" min="1" max="100" value="80" />
+              </div>
+            </div>
+            <div class="input-row" data-index="2">
+              <div class="slot" data-index="2">
+                <button type="button" class="slot-del btn btn-ghost" data-index="2" title="削除" style="position:absolute;top:6px;right:6px;z-index:2;">×</button>
+                <span class="hint">C</span><img hidden />
+              </div>
+              <div class="ctrls">
+                <label>スケール</label>
+                <input class="slider scale-slider" data-index="2" type="range" min="1" max="100" value="80" />
+                <input class="num scale-num" data-index="2" type="number" min="1" max="100" value="80" />
+              </div>
+            </div>
+            <div class="input-row" data-index="3">
+              <div class="slot" data-index="3">
+                <button type="button" class="slot-del btn btn-ghost" data-index="3" title="削除" style="position:absolute;top:6px;right:6px;z-index:2;">×</button>
+                <span class="hint">D</span><img hidden />
+              </div>
+              <div class="ctrls">
+                <label>スケール</label>
+                <input class="slider scale-slider" data-index="3" type="range" min="1" max="100" value="80" />
+                <input class="num scale-num" data-index="3" type="number" min="1" max="100" value="80" />
+              </div>
+            </div>
+          </div>
+          <div style="display:none">
+            <input id="file0" type="file" accept="image/*" />
+            <input id="file1" type="file" accept="image/*" />
+            <input id="file2" type="file" accept="image/*" />
+            <input id="file3" type="file" accept="image/*" />
+          </div>
+          <div class="actions" style="margin-top:12px">
+            <button id="clearBtn" class="btn">クリア</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>パターン</h2>
+          <div class="actions">
+            <button id="randRotBtn" class="btn">ランダム回転</button>
+            <button id="zeroRotBtn" class="btn">回転リセット（0°）</button>
+          </div>
+
+          <div class="grid-2" style="margin-top:8px">
+            <div class="field">
+              <label>&nbsp;</label>
+              <button id="openLayoutEditorBtn" class="btn" style="width:100%">レイアウト編集（別ウィンドウ）</button>
+            </div>
+            <div class="field">
+              <label class="row" style="gap:8px;">
+                カスタム配置
+                <input id="useCustomLayout" type="checkbox" />
+              </label>
+            </div>
+          </div>
+
+          <div class="grid-2" style="margin-top:8px">
+            <div class="field">
+              <label for="gridRows">縦の数</label>
+              <input id="gridRows" type="number" min="1" max="50" value="5" />
+            </div>
+            <div class="field">
+              <label for="gridCols">横の数</label>
+              <input id="gridCols" type="number" min="1" max="50" value="5" />
+            </div>
+          </div>
+
+          <div class="grid-2" style="margin-top:8px">
+            <label class="row" style="gap:8px;">
+              <input id="rectCells" type="checkbox" checked />
+              <span>セルを長方形で隙間なく敷き詰める</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>出力</h2>
+          <div class="grid-3">
+            <div class="field">
+              <label for="width">幅</label>
+              <input id="width" type="number" placeholder="px/mm/in" value="1000" />
+            </div>
+            <div class="field">
+              <label for="height">高さ</label>
+              <input id="height" type="number" placeholder="px/mm/in" value="1000" />
+            </div>
+            <div class="field">
+              <label for="unit">単位</label>
+              <select id="unit">
+                <option value="px">px</option>
+                <option value="mm">mm</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid-2" style="margin-top:8px">
+            <div class="field">
+              <label for="dpi">DPI</label>
+              <input id="dpi" type="number" value="300" />
+            </div>
+            <div class="field">
+              <label>&nbsp;</label>
+              <button id="exportBtn" class="btn btn-primary" style="width:100%">PNG保存</button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <main class="content">
+        <div class="toolbar" id="presetToolbar">
+          <div class="grid-3">
+            <div class="field">
+              <label for="preset">プリセット</label>
+              <select id="preset">
+                <option value="">選択</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="presetName">プリセット名</label>
+              <input id="presetName" type="text" placeholder="例: 名刺-300dpi" />
+            </div>
+            <div class="field">
+              <label>&nbsp;</label>
+              <div class="row">
+                <button id="savePresetBtn" class="btn">名前を付けて保存</button>
+                <button id="deletePresetBtn" class="btn" disabled>カスタム削除</button>
+                <button id="exportPresetsBtn" class="btn">エクスポート</button>
+                <button id="importPresetsBtn" class="btn">インポート</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <input id="importPresetsFile" type="file" accept="application/json" style="display:none" />
+
+        <div class="header">
+          <div>
+            <div class="brand">プレビュー</div>
+            <div class="subtle">調整値を反映して表示します</div>
+          </div>
+          <div class="row">
+            <div id="bgToggle" class="bg-toggle" aria-label="キャンバス背景色の切替">
+              <button type="button" class="btn btn-ghost" data-bg="white">白背景</button>
+              <button type="button" class="btn btn-ghost" data-bg="black">黒背景</button>
+            </div>
+            <button id="togglePresetBtn" class="btn">プリセットを隠す</button>
+          </div>
+        </div>
+
+        <div id="previewSection" class="preview-frame">
+          <div class="preview-area" style="min-height: 480px;">
+            <canvas id="preview" class="preview" width="1024" height="768" aria-label="プレビューキャンバス"></canvas>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="./scripts/app.js?v=2025-08-16-1" defer></script>
+    <script src="./scripts/export-override.js?v=2025-08-19-1" defer></script>
+    <script defer>
+      document.addEventListener('DOMContentLoaded', function () {
+        try { if (typeof setupCanvasBgToggle === 'function') setupCanvasBgToggle(); } catch (e) { }
+      });
+    </script>
+  
+  <script src="assets/js/bgSettings.js" defer></script>
+  <script src="assets/js/patternSettings.js" defer></script>
+  <script src="assets/js/patternTransform.js" defer></script>
+  
+</body>
+  </html>
