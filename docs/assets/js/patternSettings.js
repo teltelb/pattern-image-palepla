@@ -173,7 +173,14 @@
       if (ov.dataset.src !== patternSrc) {
         ov.style.display = 'none';
         ov.onload = () => {
-          try { ov.style.width = 'auto'; ov.style.height = '100%'; } catch {}
+          try {
+            ov.style.width = 'auto';
+            ov.style.height = '100%';
+            // Explicitly lock the aspect ratio to the natural image ratio
+            if (ov.naturalWidth && ov.naturalHeight) {
+              ov.style.aspectRatio = `${ov.naturalWidth} / ${ov.naturalHeight}`;
+            }
+          } catch {}
           ov.style.display = '';
           layoutOverlay(target, container, wrap);
           applyOverlayTransform(container, pan, ov);
