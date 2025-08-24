@@ -87,6 +87,9 @@ input:focus, select:focus { box-shadow: var(--shadow-2), var(--focus); }
 .btn:focus { outline: none; box-shadow: var(--shadow-2), var(--focus); }
 .btn-primary { background: linear-gradient(180deg, var(--accent), var(--accent-strong)); color: white; }
 .btn-ghost { background: transparent; border: 1px solid rgba(255,255,255,.12); }
+/* Icon buttons */
+.btn-icon { width: 40px; height: 40px; padding: 8px; display: inline-flex; align-items: center; justify-content: center; }
+.btn-icon svg { width: 20px; height: 20px; fill: currentColor; display: block; }
 /* Preview */
 .preview-frame { background: radial-gradient(600px 300px at 30% 0%, rgba(124,196,255,.08), transparent), var(--panel); border-radius: var(--radius); padding: var(--gap-lg); border: 1px solid rgba(255,255,255,.06); box-shadow: var(--shadow-1); }
 .preview-area { background: repeating-linear-gradient(45deg, #222a35 0 10px, #1b212a 10px 20px); border-radius: 12px; padding: 8px; display: grid; place-items: center; }

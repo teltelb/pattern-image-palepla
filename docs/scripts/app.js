@@ -338,7 +338,22 @@ function drawAssetCover(ctx, asset, x, y, w, h, scaleMul = 1) {
   const sw = asset.w || asset.source.width; const sh = asset.h || asset.source.height;
   let r = Math.max(w / sw, h / sh) * Math.max(0.01, scaleMul);
   const dw = sw * r; const dh = sh * r; const sx = x + (w - dw) / 2; const sy = y + (h - dh) / 2;
+
+  // Sharpen when upscaling: disable smoothing for crisper look.
+  const prevSmooth = ctx.imageSmoothingEnabled;
+  const prevQuality = ctx.imageSmoothingQuality;
+  if (dw > sw || dh > sh) {
+    ctx.imageSmoothingEnabled = false;
+  } else {
+    ctx.imageSmoothingEnabled = true;
+    try { ctx.imageSmoothingQuality = 'high'; } catch {}
+  }
+
   ctx.drawImage(asset.source, sx, sy, dw, dh);
+
+  // Restore smoothing settings
+  ctx.imageSmoothingEnabled = prevSmooth;
+  try { ctx.imageSmoothingQuality = prevQuality; } catch {}
 }
 
 function randomAngle(row, col, seed) {

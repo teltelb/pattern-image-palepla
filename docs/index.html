@@ -175,10 +175,30 @@
             <div class="field">
               <label>&nbsp;</label>
               <div class="row">
-                <button id="savePresetBtn" class="btn">名前を付けて保存</button>
-                <button id="deletePresetBtn" class="btn" disabled>カスタム削除</button>
-                <button id="exportPresetsBtn" class="btn">エクスポート</button>
-                <button id="importPresetsBtn" class="btn">インポート</button>
+                <button id="savePresetBtn" class="btn btn-icon" title="プリセットを名前を付けて保存" aria-label="プリセットを名前を付けて保存">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <rect x="2" y="2" width="20" height="20" rx="4" fill="none" stroke="currentColor" stroke-width="2"/>
+                    <text x="12" y="16" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">保</text>
+                  </svg>
+                </button>
+                <button id="deletePresetBtn" class="btn btn-icon" title="選択中のカスタムプリセットを削除" aria-label="選択中のカスタムプリセットを削除" disabled>
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <rect x="2" y="2" width="20" height="20" rx="4" fill="none" stroke="currentColor" stroke-width="2"/>
+                    <text x="12" y="16" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">削</text>
+                  </svg>
+                </button>
+                <button id="exportPresetsBtn" class="btn btn-icon" title="カスタムプリセットをエクスポート" aria-label="カスタムプリセットをエクスポート">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <rect x="2" y="2" width="20" height="20" rx="4" fill="none" stroke="currentColor" stroke-width="2"/>
+                    <text x="12" y="16" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">出</text>
+                  </svg>
+                </button>
+                <button id="importPresetsBtn" class="btn btn-icon" title="カスタムプリセットをインポート" aria-label="カスタムプリセットをインポート">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <rect x="2" y="2" width="20" height="20" rx="4" fill="none" stroke="currentColor" stroke-width="2"/>
+                    <text x="12" y="16" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">入</text>
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
