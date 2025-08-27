@@ -6,7 +6,7 @@ const qs = (s, r = document) => r.querySelector(s);
 const qsa = (s, r = document) => Array.from(r.querySelectorAll(s));
 
 const MAX_IMAGES = 4;
-const MAX_PIXELS = 50_000_000;
+const MAX_PIXELS = 54_000_000;
 
 const state = {
   images: [], // { id, source, name, w, h, scale }
