@@ -12,7 +12,7 @@
     let scalePct=100, xPx=0, yPx=0;
     try{ const ds=document.body?.dataset; if(ds?.patternScalePct) scalePct=parseFloat(ds.patternScalePct)||scalePct; if(ds?.patternOffsetX) xPx=parseFloat(ds.patternOffsetX)||xPx; if(ds?.patternOffsetY) yPx=parseFloat(ds.patternOffsetY)||yPx; }catch{}
     try{ const s=localStorage.getItem('patternScalePct'); const sx=localStorage.getItem('patternOffsetX'); const sy=localStorage.getItem('patternOffsetY'); if(s!==null) scalePct=parseFloat(s)||scalePct; if(sx!==null) xPx=parseFloat(sx)||xPx; if(sy!==null) yPx=parseFloat(sy)||yPx; }catch{}
-    scalePct=Math.max(100, Math.min(150, scalePct));
+    scalePct=Math.max(100, Math.min(300, scalePct));
     return { scalePct, xPx, yPx };
   }
 
@@ -70,7 +70,26 @@
     try{ document.querySelectorAll('#patternOverlay,#patternOverlayWrap,#patternOverlayPane').forEach(el=>{ try{ el.remove(); }catch{} }); }catch{}
     insertPatternButton();
     const pv=getPreview(); const ps=getPatternState(); applyCssLayers(pv, ps.src);
-    window.addEventListener('message',(e)=>{ const d=e&&e.data; if(!d) return; if(d.type==='patternSettingApply'){ rememberPattern(d.src||null); applyCssLayers(getPreview(), d.src||null); } if(d.type==='patternParamsChanged'){ const s=getPatternState(); applyCssLayers(getPreview(), s.src); } });
+    // メッセージ更新はrAFで集約
+    let needsApply = false; let lastApplySrc = ps.src;
+    const scheduleApply = () => {
+      if (!needsApply) {
+        needsApply = true;
+        requestAnimationFrame(() => {
+          needsApply = false;
+          applyCssLayers(getPreview(), lastApplySrc);
+        });
+      }
+    };
+    window.addEventListener('message',(e)=>{
+      const d=e&&e.data; if(!d) return;
+      if(d.type==='patternSettingApply'){
+        lastApplySrc = d.src||null; rememberPattern(lastApplySrc); scheduleApply();
+      }
+      if(d.type==='patternParamsChanged'){
+        const s=getPatternState(); lastApplySrc = s.src; scheduleApply();
+      }
+    });
     try{ if(!window.__patternControlsInjected){ const sc=document.createElement('script'); sc.src='assets/js/patternControls.js'; sc.defer=true; document.body.appendChild(sc); window.__patternControlsInjected=true; } if(!window.__exportPngInjected){ const se=document.createElement('script'); se.src='assets/js/exportPng.js'; se.defer=true; document.body.appendChild(se); window.__exportPngInjected=true; } }catch{}
   }
 

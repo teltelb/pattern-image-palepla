@@ -250,13 +250,22 @@ function syncGlobalScaleFromState() {
   if (gNum) gNum.value = String(v);
 }
 
+// rAFで再描画を集約
+let __renderScheduled = false;
 function render() {
+  if (__renderScheduled) return;
+  __renderScheduled = true;
+  requestAnimationFrame(() => { __renderScheduled = false; __doRender(); });
+}
+
+function __doRender() {
   const canvas = el('preview');
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   const list = state.images.filter(a => a && a.source);
   if (list.length === 0) { drawEmpty(canvas, ctx); return; }
-  drawPattern(canvas, ctx, list);
+  // プレビューは軽量描画モード
+  drawPattern(canvas, ctx, list, true);
 }
 
 function drawEmpty(canvas, ctx) {
@@ -268,7 +277,7 @@ function drawEmpty(canvas, ctx) {
   ctx.restore();
 }
 
-function drawPattern(canvas, ctx, images) {
+function drawPattern(canvas, ctx, images, isPreview = false) {
   const pad = 8;
   const availW = Math.max(1, canvas.width - pad * 2);
   const availH = Math.max(1, canvas.height - pad * 2);
@@ -301,7 +310,7 @@ function drawPattern(canvas, ctx, images) {
         const scalePct = asset.scale ?? 100;
         const angle = state.rotationEnabled ? randomAngle(row, col, state.randomSeed) : 0;
         ctx.save(); ctx.translate(x + w/2, y + h/2); if (angle) ctx.rotate(angle);
-        drawAssetCover(ctx, asset, -w/2, -h/2, w, h, scalePct / 100); ctx.restore();
+        drawAssetCover(ctx, asset, -w/2, -h/2, w, h, scalePct / 100, isPreview); ctx.restore();
       }
     }
     ctx.restore(); return;
@@ -330,26 +339,55 @@ function drawPattern(canvas, ctx, images) {
       const scalePct = asset.scale ?? 100;
       const angle = state.rotationEnabled ? randomAngle(row, col, state.randomSeed) : 0;
       ctx.save(); ctx.translate(x + w/2, y + h/2); if (angle) ctx.rotate(angle);
-      drawAssetCover(ctx, asset, -w/2, -h/2, w, h, scalePct / 100); ctx.restore();
+      drawAssetCover(ctx, asset, -w/2, -h/2, w, h, scalePct / 100, isPreview); ctx.restore();
     }
   }
   ctx.restore();
 }
 
-function drawAssetCover(ctx, asset, x, y, w, h, scaleMul = 1) {
+// プレビュー用スケールキャッシュ（画像ごとに最大数件）
+const __previewScaleCache = new WeakMap(); // source(Image|ImageBitmap) -> Map(key -> HTMLCanvasElement)
+function __getScaledCanvasForPreview(source, dw, dh) {
+  let map = __previewScaleCache.get(source);
+  if (!map) { map = new Map(); __previewScaleCache.set(source, map); }
+  const key = `${dw|0}x${dh|0}`;
+  if (map.has(key)) return map.get(key);
+  const c = document.createElement('canvas'); c.width = Math.max(1, dw|0); c.height = Math.max(1, dh|0);
+  const cctx = c.getContext('2d');
+  // 低コスト補間（プレビュー専用）
+  cctx.imageSmoothingEnabled = true;
+  try { cctx.imageSmoothingQuality = 'low'; } catch {}
+  try { cctx.drawImage(source, 0, 0, c.width, c.height); } catch {}
+  map.set(key, c);
+  // メモリ制御（先頭を削除）
+  if (map.size > 6) { const firstKey = map.keys().next().value; map.delete(firstKey); }
+  return c;
+}
+
+function drawAssetCover(ctx, asset, x, y, w, h, scaleMul = 1, isPreview = false) {
   const sw = asset.w || asset.source.width; const sh = asset.h || asset.source.height;
   let r = Math.max(w / sw, h / sh) * Math.max(0.01, scaleMul);
   const dw = sw * r; const dh = sh * r; const sx = x + (w - dw) / 2; const sy = y + (h - dh) / 2;
 
-  // Always favor high-quality interpolation for scaling to keep assets clean.
+  if (isPreview) {
+    // プレビューはキャッシュした縮小版を使用し、体感を改善
+    const scaled = __getScaledCanvasForPreview(asset.source, Math.max(1, dw|0), Math.max(1, dh|0));
+    const prevSmooth = ctx.imageSmoothingEnabled;
+    const prevQuality = ctx.imageSmoothingQuality;
+    // 描画側の補間は最小に（キャッシュ側で縮小済み）
+    ctx.imageSmoothingEnabled = false;
+    try { ctx.imageSmoothingQuality = 'low'; } catch {}
+    try { ctx.drawImage(scaled, sx, sy, dw, dh); } catch {}
+    ctx.imageSmoothingEnabled = prevSmooth; try { ctx.imageSmoothingQuality = prevQuality; } catch {}
+    return;
+  }
+
+  // エクスポート時は従来どおり高品質補間を使用（出力互換性維持）
   const prevSmooth = ctx.imageSmoothingEnabled;
   const prevQuality = ctx.imageSmoothingQuality;
   ctx.imageSmoothingEnabled = true;
   try { ctx.imageSmoothingQuality = 'high'; } catch {}
-
   ctx.drawImage(asset.source, sx, sy, dw, dh);
-
-  // Restore smoothing settings
   ctx.imageSmoothingEnabled = prevSmooth;
   try { ctx.imageSmoothingQuality = prevQuality; } catch {}
 }
@@ -515,7 +553,7 @@ async function exportPng() {
   const list = state.images.filter(a => a && a.source); if (list.length === 0) { alert('画像を追加してください'); return; }
 
   const exportCanvas = document.createElement('canvas'); exportCanvas.width = widthPx; exportCanvas.height = heightPx;
-  const ctx = exportCanvas.getContext('2d'); drawPattern(exportCanvas, ctx, list);
+  const ctx = exportCanvas.getContext('2d'); drawPattern(exportCanvas, ctx, list, false);
 
   let blob = await new Promise((res) => exportCanvas.toBlob(res, 'image/png'));
   if (!blob) { const dataUrl = exportCanvas.toDataURL('image/png'); blob = dataURLtoBlob(dataUrl); }
@@ -559,7 +597,7 @@ async function exportComposite() {
   // 1) 透過のパターンレイヤーを作成
   const patternCanvas = document.createElement('canvas'); patternCanvas.width = widthPx; patternCanvas.height = heightPx;
   const pctx = patternCanvas.getContext('2d');
-  drawPattern(patternCanvas, pctx, list);
+  drawPattern(patternCanvas, pctx, list, false);
 
   // 2) 合成キャンバス
   const outCanvas = document.createElement('canvas'); outCanvas.width = widthPx; outCanvas.height = heightPx;

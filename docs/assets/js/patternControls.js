@@ -16,6 +16,8 @@
     return document.body;
   }
 
+  // datasetは即時更新、localStorageはデバウンスして書き込み負荷を軽減
+  let __lsTimer = null;
   function saveParams(scalePct, xPx, yPx) {
     try {
       document.body.dataset.patternScalePct = String(scalePct);
@@ -23,9 +25,15 @@
       document.body.dataset.patternOffsetY = String(yPx);
     } catch {}
     try {
-      localStorage.setItem('patternScalePct', String(scalePct));
-      localStorage.setItem('patternOffsetX', String(xPx));
-      localStorage.setItem('patternOffsetY', String(yPx));
+      if (__lsTimer) clearTimeout(__lsTimer);
+      const sp = String(scalePct), sx = String(xPx), sy = String(yPx);
+      __lsTimer = setTimeout(() => {
+        try {
+          localStorage.setItem('patternScalePct', sp);
+          localStorage.setItem('patternOffsetX', sx);
+          localStorage.setItem('patternOffsetY', sy);
+        } catch {}
+      }, 120);
     } catch {}
   }
 
@@ -79,7 +87,7 @@
 
     const rowX = mkRow('X(px)', 'patXRange', 'patXNum', -1000, 1000, 1, 'px');
     const rowY = mkRow('Y(px)', 'patYRange', 'patYNum', -1000, 1000, 1, 'px');
-    const rowS = mkRow('拡縮率(%)', 'patSRange', 'patSNum', 100, 150, 1, '%');
+    const rowS = mkRow('拡縮率(%)', 'patSRange', 'patSNum', 100, 300, 1, '%');
 
     [rowX, rowY, rowS].forEach(r => {
       panel.appendChild(r.label);
@@ -140,7 +148,7 @@
       const x = parseFloat(rowX.valueBox.value || '0') || 0;
       const y = parseFloat(rowY.valueBox.value || '0') || 0;
       const s = parseFloat(rowS.valueBox.value || '100') || 100;
-      const ss = Math.max(100, Math.min(150, s));
+      const ss = Math.max(100, Math.min(300, s));
       // clamp x,y to current slider bounds
       const xmin = parseFloat(rowX.range.min); const xmax = parseFloat(rowX.range.max);
       const ymin = parseFloat(rowY.range.min); const ymax = parseFloat(rowY.range.max);
@@ -153,9 +161,19 @@
       try { window.postMessage({ type: 'patternParamsChanged' }, '*'); } catch {}
     };
 
+    // rAFスロットリング: 連続inputを1フレームに集約
+    let rafId = 0;
+    const scheduleEmit = () => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => { rafId = 0; emit(); });
+    };
+
     const bind = (range, num) => {
-      range.addEventListener('input', () => { num.value = range.value; emit(); });
-      num.addEventListener('input', () => { range.value = num.value; emit(); });
+      range.addEventListener('input', () => { num.value = range.value; scheduleEmit(); });
+      num.addEventListener('input', () => { range.value = num.value; scheduleEmit(); });
+      // 値確定時は即時反映
+      range.addEventListener('change', emit);
+      num.addEventListener('change', emit);
     };
     bind(rowX.range, rowX.valueBox);
     bind(rowY.range, rowY.valueBox);
