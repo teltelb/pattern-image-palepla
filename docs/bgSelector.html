@@ -281,10 +281,6 @@
           let list = await loadManifest();
           // 黒・白系（BLACK / SNOW WHITE）は選択肢から除外
           try {
-            list = list.filter(src => {
-              const base = (src.split('/')?.pop() || '').toUpperCase();
-              return !base.includes('BLACK') && !base.includes('SNOW WHITE');
-            });
           } catch {}
           grid.innerHTML = '';
           // Add "未設定" at the beginning
